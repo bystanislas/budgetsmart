@@ -7,6 +7,7 @@ import {
   seDeconnecter, terminerConnexionParEmail, useUtilisateur,
 } from '../lib/auth'
 import { pousserTout, tirerTout } from '../lib/sync'
+import { useT } from '../i18n'
 
 const CONTENEUR_RECAPTCHA = 'recaptcha-conteneur'
 
@@ -17,6 +18,7 @@ const CONTENEUR_RECAPTCHA = 'recaptcha-conteneur'
  */
 export default function CompteCloud({ annonce }: { annonce: (texte: string) => void }) {
   const utilisateur = useUtilisateur()
+  const t = useT()
 
   const [email, setEmail] = useState('')
   const [lienEnvoye, setLienEnvoye] = useState(false)
@@ -35,8 +37,8 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
     if (!memorise) { setConfirmationEmail(true); return }
     setOccupe(true)
     terminerConnexionParEmail(memorise)
-      .then(() => annonce('Connexion réussie. Vos données sont en cours de récupération.'))
-      .catch(() => { setConfirmationEmail(true); annonce('Le lien a expiré. Recommencez.') })
+      .then(() => annonce(t('compte.connexionReussie')))
+      .catch(() => { setConfirmationEmail(true); annonce(t('compte.lienExpire')) })
       .finally(() => setOccupe(false))
   }, [])
 
@@ -49,7 +51,7 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
   if (utilisateur) {
     const identifiant = utilisateur.email ?? utilisateur.phoneNumber ?? 'compte'
     return (
-      <Section title="Mon compte">
+      <Section title={t('compte.titre')}>
         <Card className="space-y-3 p-3">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-apex-green text-white">
@@ -58,15 +60,13 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-apex-navy">{identifiant}</p>
               <p className="text-2xs text-surface-500">
-                Sauvegarde en ligne active <Puce ton="ok">connecté</Puce>
+                {t('compte.sauvegardeActive')} <Puce ton="ok">{t('compte.connecte')}</Puce>
               </p>
             </div>
           </div>
 
           <p className="text-2xs leading-relaxed text-surface-500">
-            Vos saisies restent enregistrées sur cet appareil et sont recopiées dans votre
-            espace privé. Sur un nouveau téléphone, connectez-vous avec le même email ou
-            le même numéro : tout revient.
+            {t('compte.connecteAide')}
           </p>
 
           <div className="grid grid-cols-2 gap-2">
@@ -76,20 +76,20 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
               onClick={() => void proteger(async () => {
                 await pousserTout(utilisateur.uid)
                 await tirerTout(utilisateur.uid)
-                annonce('Synchronisation terminée.')
-              }, 'Synchronisation impossible — vérifiez votre connexion.')}
+                annonce(t('compte.syncTerminee'))
+              }, t('compte.syncImpossible'))}
             >
-              <RefreshCw size={16} /> Synchroniser
+              <RefreshCw size={16} /> {t('compte.synchroniser')}
             </Btn>
             <Btn
               variant="ghost"
               disabled={occupe}
               onClick={() => void proteger(async () => {
                 await seDeconnecter()
-                annonce('Déconnecté. Vos données restent sur cet appareil.')
-              }, 'Déconnexion impossible.')}
+                annonce(t('compte.deconnecte'))
+              }, t('compte.deconnexionImpossible'))}
             >
-              <LogOut size={16} /> Se déconnecter
+              <LogOut size={16} /> {t('compte.seDeconnecter')}
             </Btn>
           </div>
         </Card>
@@ -99,49 +99,47 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
 
   /* ------------------------------------------------------ non connecté */
   return (
-    <Section title="Mon compte">
+    <Section title={t('compte.titre')}>
       <Card className="space-y-3 p-3">
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-surface-200 text-surface-500">
             <CloudOff size={20} strokeWidth={2.2} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-apex-navy">Aucun compte</p>
+            <p className="text-sm font-bold text-apex-navy">{t('compte.aucunCompte')}</p>
             <p className="text-2xs text-surface-500">
-              Vos données vivent uniquement sur cet appareil.
+              {t('compte.aucunCompteSous')}
             </p>
           </div>
         </div>
 
         <p className="rounded-xl bg-apex-cream p-3 text-2xs leading-relaxed text-apex-navy">
-          Créez un compte pour retrouver vos budgets si vous changez de téléphone,
-          désinstallez l'application ou effacez les données du navigateur. Sans compte,
-          seule la sauvegarde manuelle en fichier vous protège.
+          {t('compte.argumentaire')}
         </p>
 
         {confirmationEmail ? (
-          <Field label="Confirmez votre email" hint="Le lien a été ouvert sur un autre appareil.">
+          <Field label={t('compte.confirmezEmail')} hint={t('compte.confirmezEmailAide')}>
             <div className="flex gap-2">
               <Input
-                className="flex-1" inputMode="email" value={email} placeholder="vous@exemple.com"
+                className="flex-1" inputMode="email" value={email} placeholder={t('compte.emailPlaceholder')}
                 onChange={(e) => setEmail(e.target.value)}
               />
               <Btn
                 variant="gold" disabled={occupe || !email.includes('@')}
                 onClick={() => void proteger(async () => {
                   await terminerConnexionParEmail(email.trim())
-                  annonce('Connexion réussie.')
-                }, 'Connexion impossible. Redemandez un lien.')}
+                  annonce(t('compte.connexionReussie'))
+                }, t('compte.connexionImpossible'))}
               >
-                Valider
+                {t('commun.valider')}
               </Btn>
             </div>
           </Field>
         ) : (
-          <Field label="Par email" hint="Vous recevrez un lien : un clic suffit, aucun mot de passe.">
+          <Field label={t('compte.parEmail')} hint={t('compte.parEmailAide')}>
             <div className="flex gap-2">
               <Input
-                className="flex-1" inputMode="email" value={email} placeholder="vous@exemple.com"
+                className="flex-1" inputMode="email" value={email} placeholder={t('compte.emailPlaceholder')}
                 onChange={(e) => { setEmail(e.target.value); setLienEnvoye(false) }}
               />
               <Btn
@@ -149,22 +147,22 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
                 onClick={() => void proteger(async () => {
                   await envoyerLienConnexion(email.trim())
                   setLienEnvoye(true)
-                  annonce(`Lien envoyé à ${email.trim()}.`)
-                }, 'Envoi impossible — vérifiez l’adresse et votre connexion.')}
+                  annonce(t('compte.lienEnvoyeA', { email: email.trim() }))
+                }, t('compte.envoiImpossible'))}
               >
                 <Mail size={16} />
               </Btn>
             </div>
             {lienEnvoye && (
               <span className="mt-1 block text-2xs font-semibold text-apex-green">
-                Lien envoyé. Ouvrez votre boîte mail sur cet appareil, puis revenez ici.
+                {t('compte.lienEnvoye')}
               </span>
             )}
           </Field>
         )}
 
         {confirmationSms ? (
-          <Field label="Code reçu par SMS">
+          <Field label={t('compte.codeRecu')}>
             <div className="flex gap-2">
               <Input
                 className="flex-1" inputMode="numeric" value={code} placeholder="123456"
@@ -176,15 +174,15 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
                   await confirmationSms.confirm(code.trim())
                   setConfirmationSms(null)
                   setCode('')
-                  annonce('Connexion réussie.')
-                }, 'Code incorrect ou expiré.')}
+                  annonce(t('compte.connexionReussie'))
+                }, t('compte.codeIncorrect'))}
               >
-                Valider
+                {t('commun.valider')}
               </Btn>
             </div>
           </Field>
         ) : (
-          <Field label="Ou par SMS" hint="Numéro au format international, indicatif compris.">
+          <Field label={t('compte.parSms')} hint={t('compte.parSmsAide')}>
             <div className="flex gap-2">
               <Input
                 className="flex-1" inputMode="tel" value={numero} placeholder="+225 07 12 34 56 78"
@@ -197,8 +195,8 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
                     numero.replace(/\s+/g, ''), CONTENEUR_RECAPTCHA,
                   )
                   setConfirmationSms(confirmation)
-                  annonce('Code envoyé par SMS.')
-                }, 'Envoi impossible — vérifiez le numéro et son indicatif.')}
+                  annonce(t('compte.codeEnvoye'))
+                }, t('compte.envoiSmsImpossible'))}
               >
                 <Smartphone size={16} />
               </Btn>

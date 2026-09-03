@@ -8,9 +8,9 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { saveAs } from 'file-saver'
-import {
-  APP_BRAND, APP_CONTACT, APP_NAME, MOIS, labelModule, labelType, sensDe,
-} from '../data/refs'
+import { APP_BRAND, APP_CONTACT, APP_NAME, sensDe } from '../data/refs'
+import { dictionnaire, labelModule, labelStatut, labelType, traducteurPour } from '../i18n'
+import { estLangue, LANGUE_DEFAUT, type Langue } from '../i18n/langues'
 import { db, getParametres } from '../db'
 import {
   agregerAnnee, calculerDime, creances, detailEpargne, empruntsEnCours, estRealisee,
@@ -51,7 +51,13 @@ export async function exporterPdf(periode: Periode): Promise<string> {
     db.plan.toArray(),
   ])
 
-  const b = bornes(periode)
+  // Le rapport suit la langue de l'application, comme le classeur Excel.
+  const langue: Langue = estLangue(p.langue) ? p.langue : LANGUE_DEFAUT
+  const t = traducteurPour(langue)
+  const MOIS = dictionnaire(langue).mois.long
+  const TOTAL = t('rapport.totalMaj')
+
+  const b = bornes(periode, langue)
   const ecritures = toutes.filter((e) => e.date >= b.debut && e.date <= b.fin)
   const nomCompte = (id?: string) => comptes.find((c) => c.id === id)?.nom ?? ''
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
@@ -76,8 +82,9 @@ export async function exporterPdf(periode: Periode): Promise<string> {
   doc.setFont('helvetica', 'bold').setFontSize(11)
   doc.text(txt(b.libelle), L - 14, 12, { align: 'right' })
   doc.setFont('helvetica', 'normal').setFontSize(8)
-  doc.text(`du ${jour(b.debut)} au ${jour(b.fin)}`, L - 14, 17.5, { align: 'right' })
-  doc.text(txt(p.raisonSociale || 'Mon budget'), L - 14, 22, { align: 'right' })
+  doc.text(txt(t('rapport.duAu', { debut: jour(b.debut), fin: jour(b.fin) })),
+    L - 14, 17.5, { align: 'right' })
+  doc.text(txt(p.raisonSociale || t('rapport.monBudget')), L - 14, 22, { align: 'right' })
 
   /* ------------------------------------------------------- indicateurs */
   const entree = (e: Ecriture) => estRealisee(e) && sensDe(e.type) === 'entree'
@@ -89,11 +96,11 @@ export async function exporterPdf(periode: Periode): Promise<string> {
   const sorties = somme(sortie)
   const epargne = somme((e) => estRealisee(e) && e.type === 'epargne')
   const cartes: { label: string; valeur: string; couleur: [number, number, number] }[] = [
-    { label: 'ENTRÉES', valeur: montant(entrees), couleur: GREEN },
-    { label: 'SORTIES', valeur: montant(sorties), couleur: RED },
-    { label: 'SOLDE', valeur: montant(entrees - sorties), couleur: NAVY },
-    { label: 'MIS DE CÔTÉ', valeur: montant(epargne), couleur: STEEL },
-    { label: 'OPÉRATIONS', valeur: String(ecritures.length), couleur: GOLD },
+    { label: t('rapport.entrees').toUpperCase(), valeur: montant(entrees), couleur: GREEN },
+    { label: t('rapport.sortiesMaj'), valeur: montant(sorties), couleur: RED },
+    { label: t('rapport.soldeMaj'), valeur: montant(entrees - sorties), couleur: NAVY },
+    { label: t('rapport.misDeCote'), valeur: montant(epargne), couleur: STEEL },
+    { label: t('rapport.nbOperations'), valeur: String(ecritures.length), couleur: GOLD },
   ]
   const largeur = (L - 28 - 4 * 4) / cartes.length
   cartes.forEach((c, i) => {
@@ -104,7 +111,7 @@ export async function exporterPdf(periode: Periode): Promise<string> {
     doc.rect(x, 33, largeur, 1.6, 'F')
     doc.setTextColor(...GRIS)
     doc.setFont('helvetica', 'bold').setFontSize(6.5)
-    doc.text(c.label, x + 3, 39.5)
+    doc.text(txt(c.label), x + 3, 39.5)
     doc.setTextColor(...c.couleur)
     doc.setFont('helvetica', 'bold').setFontSize(11)
     doc.text(txt(c.valeur), x + 3, 47)
@@ -156,17 +163,19 @@ export async function exporterPdf(periode: Periode): Promise<string> {
   /* ------------------------------------------------------- 1. synthèse */
   const mensuel = agregerAnnee(p, toutes, plan, periode.annee)
     .filter((m) => moisCouverts(periode).includes(m.mois))
-  titre('Synthèse de la période')
+  titre(t('rapport.syntheseDeLaPeriode'))
   bloc(
-    ['Mois', 'Entrées', 'Dépenses', 'Épargne', 'Invest.', 'Rembours.', 'Prêts',
-      'Total sorties', 'Solde', 'Trésorerie', 'Budget prévu', 'Écart'],
+    [t('rapport.colMois'), t('rapport.entrees'), t('rapport.colDepenses'),
+      t('rapport.colEpargne'), t('rapport.colInvestCourt'), t('rapport.colRemboursCourt'),
+      t('rapport.colPretsCourt'), t('rapport.totalSorties'), t('rapport.colSolde'),
+      t('rapport.colTresorerie'), t('rapport.budgetPrevu'), t('estimation.ecart')],
     mensuel.map((m) => [
       MOIS[m.mois - 1], montant(m.entrees), montant(m.depenses), montant(m.epargne),
       montant(m.investissement), montant(m.remboursement), montant(m.prets),
       montant(m.sorties), montant(m.solde), montant(m.cumul),
       montant(m.prevuDepenses), montant(m.ecartBudget),
     ]),
-    ['TOTAL', montant(mensuel.reduce((s, m) => s + m.entrees, 0)),
+    [TOTAL, montant(mensuel.reduce((s, m) => s + m.entrees, 0)),
       montant(mensuel.reduce((s, m) => s + m.depenses, 0)),
       montant(mensuel.reduce((s, m) => s + m.epargne, 0)),
       montant(mensuel.reduce((s, m) => s + m.investissement, 0)),
@@ -194,49 +203,54 @@ export async function exporterPdf(periode: Periode): Promise<string> {
   const lignes = [...detail.values()].sort((a, c) => c.montant - a.montant)
   const totalCat = lignes.reduce((s, l) => s + l.montant, 0)
   if (lignes.length) {
-    titre('Où part l’argent — par catégorie et sous-catégorie')
+    titre(t('rapport.ouPartArgentDetail'))
     bloc(
-      ['Catégorie', 'Sous-catégorie', 'Montant', 'Part', 'Opérations', 'Moyenne'],
+      [t('rapport.colCategorie'), t('rapport.colSousCategorie'), t('rapport.colMontant'),
+        t('rapport.colPart'), t('rapport.nbOperations'), t('rapport.moyenne')],
       lignes.map((l) => [
         l.cat, l.sous, montant(l.montant),
         totalCat ? `${((l.montant / totalCat) * 100).toFixed(1)} %` : '—',
         l.nb, montant(Math.round(l.montant / l.nb)),
       ]),
-      ['TOTAL', '', montant(totalCat), '100 %',
+      [TOTAL, '', montant(totalCat), '100 %',
         lignes.reduce((s, l) => s + l.nb, 0), ''],
       [2, 3, 4, 5],
     )
   }
 
   /* ---------------------------------------------------- 3. le journal */
-  titre('Journal détaillé des opérations')
+  titre(t('rapport.journalDetaille'))
   bloc(
-    ['Date', 'Type', 'Catégorie', 'Sous-catégorie', 'Descriptif', 'Tiers',
-      'Entrée', 'Sortie', 'Compte', 'Statut'],
+    [t('rapport.colDate'), t('rapport.colType'), t('rapport.colCategorie'),
+      t('rapport.colSousCategorie'), t('rapport.colDescriptif'), t('rapport.colTiers'),
+      t('rapport.sensEntree'), t('rapport.sensSortie'), t('rapport.colCompte'),
+      t('rapport.colStatut')],
     ecritures.map((e) => [
-      jour(e.date), labelType(e.type),
-      e.module === 'general' ? e.categorie : `${labelModule(e.module)} · ${e.categorie}`,
+      jour(e.date), labelType(t, e.type),
+      e.module === 'general' ? e.categorie : `${labelModule(t, e.module)} · ${e.categorie}`,
       e.sousCategorie ?? '', e.descriptif ?? e.note ?? '', e.tiers ?? '',
       entree(e) ? montant(e.montantBase) : '',
       sortie(e) ? montant(e.montantBase) : '',
       nomCompte(e.compteCibleId) || nomCompte(e.compteId),
-      e.statut === 'paye' ? '' : e.statut,
+      e.statut === 'paye' ? '' : labelStatut(t, e.statut),
     ]),
-    ['TOTAL', '', '', '', '', '', montant(entrees), montant(sorties), '', ''],
+    [TOTAL, '', '', '', '', '', montant(entrees), montant(sorties), '', ''],
     [6, 7],
   )
 
   /* --------------------------------------------------- 4. mon épargne */
   const epargnes = detailEpargne(comptes, ecritures)
   if (epargnes.length) {
-    titre('Mon épargne — où dort l’argent')
+    titre(t('rapport.monEpargne'))
     bloc(
-      ['Compte', 'Type', 'Établissement', 'Versé', 'Retiré', 'Solde', 'Bloqué jusqu’au'],
+      [t('rapport.colCompte'), t('rapport.typeCompte'), t('rapport.etablissement'),
+        t('rapport.colVerse'), t('rapport.retire'), t('rapport.colSolde'),
+        t('rapport.bloqueJusquau')],
       epargnes.map((l) => [
         l.compte, l.nature, l.etablissement, montant(l.verse), montant(l.retire),
         montant(l.solde), jour(l.blocageJusqu) || '—',
       ]),
-      ['TOTAL', '', '',
+      [TOTAL, '', '',
         montant(epargnes.reduce((s, l) => s + l.verse, 0)),
         montant(epargnes.reduce((s, l) => s + l.retire, 0)),
         montant(epargnes.reduce((s, l) => s + l.solde, 0)), ''],
@@ -248,13 +262,14 @@ export async function exporterPdf(periode: Periode): Promise<string> {
   const aRecevoir = creances(toutes)
   const aRendre = empruntsEnCours(toutes)
   if (aRecevoir.length || aRendre.length) {
-    titre('Prêts accordés et emprunts reçus')
+    titre(t('rapport.pretsEmprunts'))
     bloc(
-      ['Sens', 'Tiers', 'Montant engagé', 'Déjà réglé', 'Reste', 'Dernière opération'],
+      [t('rapport.colSens'), t('rapport.colTiers'), t('rapport.montantEngage'),
+        t('rapport.dejaRegle'), t('rapport.colReste'), t('rapport.colDerniereOperation')],
       [
-        ...aRecevoir.map((c) => ['Ils me doivent', c.tiers, montant(c.avance),
+        ...aRecevoir.map((c) => [t('rapport.ilsMeDoivent'), c.tiers, montant(c.avance),
           montant(c.regle), montant(c.solde), jour(c.dernier)]),
-        ...aRendre.map((d) => ['Je dois', d.tiers, montant(d.avance),
+        ...aRendre.map((d) => [t('rapport.jeDois'), d.tiers, montant(d.avance),
           montant(d.regle), montant(d.solde), jour(d.dernier)]),
       ],
       undefined,
@@ -264,10 +279,11 @@ export async function exporterPdf(periode: Periode): Promise<string> {
 
   /* ------------------------------------------------------- 6. la dîme */
   if (p.dimeActive) {
-    titre('Dîme et offrandes')
+    titre(t('rapport.dimeOffrandes'))
     const mois = moisCouverts(periode)
     bloc(
-      ['Mois', 'Revenus soumis', 'Dîme due', 'Déjà versée', 'Reste à verser'],
+      [t('rapport.colMois'), t('rapport.colRevenusSoumis'), t('rapport.colDimeDue'),
+        t('rapport.colDejaVersee'), t('rapport.colResteAVerser')],
       mois.map((m) => {
         const d = calculerDime(p, toutes, periode.annee, m)
         return [MOIS[m - 1], montant(d.assiette), montant(d.due),
@@ -289,7 +305,8 @@ export async function exporterPdf(periode: Periode): Promise<string> {
     doc.setFont('helvetica', 'normal').setFontSize(7)
     doc.setTextColor(...GRIS)
     doc.text(`${APP_NAME} ${APP_BRAND} · ${APP_CONTACT}`, 14, H - 7.5)
-    doc.text(txt(`${b.libelle} — page ${i} / ${pages}`), L - 14, H - 7.5, { align: 'right' })
+    doc.text(txt(`${b.libelle} — ${t('rapport.page', { n: i, total: pages })}`),
+      L - 14, H - 7.5, { align: 'right' })
   }
 
   const nom = `Budget-Smart-${b.cle}.pdf`

@@ -8,10 +8,13 @@ import {
   Btn, Card, Field, Input, Kpi, MoneyInput, Puce, Section, Select, Sheet, TextArea, Vide,
 } from '../components/kit'
 import {
-  CAT_SPIRITUEL, DEVISES, MODULES, NATURES, STATUTS, TYPES, TYPES_TIERS,
-  labelModule, sensDe,
+  DEVISES, MODULES, NATURES, STATUTS, TYPES, TYPES_TIERS, sensDe,
 } from '../data/refs'
+import {
+  labelModule, labelNature, labelStatut, labelType, useT,
+} from '../i18n'
 import { categoriesPour, moyensDe, sousCategoriesDe } from '../lib/referentiel'
+import { estSpirituel } from '../data/concepts'
 import { db, getParametres, now, uid } from '../db'
 import { anneeDe, estRealisee, moisDe } from '../lib/compute'
 import { convertir, fmt } from '../lib/money'
@@ -26,6 +29,7 @@ const vierge = (): Ecriture => ({
 })
 
 export default function Journal() {
+  const t = useT()
   const [params, setParams] = useSearchParams()
   const p = useLiveQuery(() => getParametres(), [])
   const comptes = useLiveQuery(() => db.comptes.orderBy('nom').toArray(), [], [])
@@ -37,7 +41,7 @@ export default function Journal() {
       db.postes.toArray(), db.objectifs.toArray(), db.dettes.toArray(),
     ])
     return [
-      ...postes.map((x) => ({ id: x.id, nom: x.nom, groupe: labelModule(x.module) })),
+      ...postes.map((x) => ({ id: x.id, nom: x.nom, groupe: labelModule(t, x.module) })),
       ...objectifs.map((x) => ({ id: x.id, nom: x.nom, groupe: 'Objectifs' })),
       ...dettes.map((x) => ({ id: x.id, nom: x.nom, groupe: 'Crédits' })),
     ]
@@ -103,7 +107,6 @@ export default function Journal() {
    * On propose l'église enregistrée dans les paramètres et la date du jour ;
    * le texte reste entièrement modifiable.
    */
-  const estSpirituel = (categorie: string) => CAT_SPIRITUEL.includes(categorie)
   const descriptifPropose = (categorie: string, date = aujourdhui()) =>
     `${p.dimeEglise} — ${date.split('-').reverse().join('/')}`
 
@@ -162,16 +165,16 @@ export default function Journal() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div className="grid grid-cols-3 gap-2.5">
-        <Kpi label="Entrées du mois" valeur={fmt(p, totaux.entrees, { court: true })} ton="green" />
-        <Kpi label="Sorties du mois" valeur={fmt(p, totaux.sorties, { court: true })} ton="red" />
-        <Kpi label="Solde" valeur={fmt(p, totaux.solde, { court: true })}
+        <Kpi label={t('journal.entreesDuMois')} valeur={fmt(p, totaux.entrees, { court: true })} ton="green" />
+        <Kpi label={t('journal.sortiesDuMois')} valeur={fmt(p, totaux.sorties, { court: true })} ton="red" />
+        <Kpi label={t('commun.solde')} valeur={fmt(p, totaux.solde, { court: true })}
              ton={totaux.solde >= 0 ? 'navy' : 'red'} />
       </div>
 
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between bg-apex-navy px-3.5 py-2">
           <p className="text-2xs font-bold uppercase tracking-[.14em] text-white">
-            Saisie rapide
+            {t('journal.saisieRapide')}
           </p>
           <button
             className="text-2xs font-semibold text-apex-gold"
@@ -181,27 +184,27 @@ export default function Journal() {
               libelle: rapide.categorie,
             })}
           >
-            Plus de détails →
+            {t('journal.plusDeDetails')}
           </button>
         </div>
 
         <div className="space-y-2.5 p-3">
           <div className="grid grid-cols-3 gap-2">
             {(['depense', 'revenu', 'epargne'] as const)
-              .map((id) => TYPES.find((t) => t.id === id)!)
-              .map((t) => (
+              .map((id) => TYPES.find((x) => x.id === id)!)
+              .map((type) => (
               <button
-                key={t.id}
-                onClick={() => setRapide({ ...rapide, type: t.id, categorie: '', sousCategorie: '' })}
+                key={type.id}
+                onClick={() => setRapide({ ...rapide, type: type.id, categorie: '', sousCategorie: '' })}
                 className={`rounded-xl border px-2 py-2 text-xs font-bold transition ${
-                  rapide.type === t.id
-                    ? t.sens === 'entree'
+                  rapide.type === type.id
+                    ? type.sens === 'entree'
                       ? 'border-apex-green bg-apex-mint text-apex-green'
                       : 'border-apex-gold bg-apex-cream text-apex-navy'
                     : 'border-surface-300 bg-white text-surface-600'
                 }`}
               >
-                {t.label}
+                {labelType(t, type.id)}
               </button>
             ))}
           </div>
@@ -234,14 +237,14 @@ export default function Journal() {
             ))}
             <select
               value=""
-              aria-label="Autre catégorie"
+              aria-label={t('journal.autreCategorie')}
               onChange={(e) => e.target.value && setRapide({
                 ...rapide, categorie: e.target.value, sousCategorie: '',
               })}
               className="rounded-full border border-surface-300 bg-white px-2.5 py-1 text-2xs
                          font-semibold text-surface-600 outline-none focus:border-apex-gold"
             >
-              <option value="">Autre catégorie…</option>
+              <option value="">{t('journal.autreCategorie')}</option>
               {categoriesPour(p, moduleCourant, rapide.type)
                 .filter((c) => !puces.includes(c))
                 .map((c) => <option key={c} value={c}>{c}</option>)}
@@ -282,24 +285,24 @@ export default function Journal() {
             className="!py-2 !text-xs"
             placeholder={
               estSpirituel(rapide.categorie || puces[0] || '')
-                ? `Quelle église, quelle date ? — ex. « ${p.dimeEglise} »`
+                ? t('journal.placeholderEglise', { eglise: p.dimeEglise })
                 : TYPES_TIERS.includes(rapide.type)
-                  ? 'À qui / de qui ? — ex. « Koffi, remboursement fin octobre »'
+                  ? t('journal.placeholderTiers')
                   : rapide.type === 'epargne'
-                    ? 'Pour quoi ? — ex. « apport terrain Bingerville »'
-                    : 'À quoi ça a servi ? — ex. « maison → académie »'
+                    ? t('journal.placeholderEpargne')
+                    : t('journal.placeholderServi')
             }
           />
 
           <p className="text-2xs leading-relaxed text-surface-500">
-            Enregistré aujourd’hui en {labelModule(moduleCourant).toLowerCase()}
+            {t('journal.enregistreAujourdhui', { module: labelModule(t, moduleCourant).toLowerCase() })}
             {dernier?.compteId && comptes.some((c) => c.id === dernier.compteId)
-              ? ` depuis « ${comptes.find((c) => c.id === dernier.compteId)?.nom} »`
-              : comptes[0] ? ` depuis « ${comptes[0].nom} »` : ''}
+              ? t('journal.depuisCompte', { compte: comptes.find((c) => c.id === dernier.compteId)?.nom ?? '' })
+              : comptes[0] ? t('journal.depuisCompte', { compte: comptes[0].nom }) : ''}
             {compteDestination
-              ? ` vers « ${comptes.find((c) => c.id === compteDestination)?.nom} »`
+              ? t('journal.versCompte', { compte: comptes.find((c) => c.id === compteDestination)?.nom ?? '' })
               : ''}
-            . Le tableau de bord, les récapitulatifs et la dîme se recalculent tout seuls.
+            {t('journal.toutRecalcule')}
           </p>
         </div>
       </Card>
@@ -312,15 +315,15 @@ export default function Journal() {
                       ? 'bg-apex-navy text-white'
                       : 'border border-surface-300 bg-white text-surface-600'
                   }`}>
-            {id === 'tout' ? 'Tout' : labelModule(id as ModuleId)}
+            {id === 'tout' ? t('commun.tout') : labelModule(t, id as ModuleId)}
           </button>
         ))}
       </div>
 
-      <Section title={`${visibles.length} opération${visibles.length > 1 ? 's' : ''}`}>
+      <Section title={`${visibles.length} ${visibles.length > 1 ? t('journal.operationsPluriel') : t('journal.operations')}`}>
         {visibles.length === 0 ? (
-          <Vide texte="Aucune opération pour l’instant."
-                action={<Btn variant="gold" onClick={() => ouvrir()}><Plus size={16} /> Saisir la première</Btn>} />
+          <Vide texte={t('journal.aucuneOperation')}
+                action={<Btn variant="gold" onClick={() => ouvrir()}><Plus size={16} /> {t('journal.saisirPremiere')}</Btn>} />
         ) : (
           <div className="space-y-2">
             {visibles.slice(0, 200).map((e) => {
@@ -344,10 +347,10 @@ export default function Journal() {
                       {e.sousCategorie && (
                         <span className="font-semibold text-apex-gold">› {e.sousCategorie}</span>
                       )}
-                      {e.module !== 'general' && <Puce>{labelModule(e.module)}</Puce>}
+                      {e.module !== 'general' && <Puce>{labelModule(t, e.module)}</Puce>}
                       {e.statut !== 'paye' && (
                         <Puce ton={e.statut === 'annule' ? 'neutre' : 'attention'}>
-                          {STATUTS.find((s) => s.id === e.statut)?.label}
+                          {labelStatut(t, e.statut)}
                         </Puce>
                       )}
                     </p>
@@ -372,7 +375,7 @@ export default function Journal() {
                       {fmt(p, e.montantBase, { court: true })}
                     </p>
                     <div className="mt-1 flex justify-end gap-1">
-                      <button onClick={() => repeter(e)} aria-label="Repasser aujourd’hui"
+                      <button onClick={() => repeter(e)} aria-label={t('journal.repasser')}
                               className="rounded p-1 text-surface-400 hover:bg-apex-cream hover:text-apex-gold">
                         <CopyPlus size={14} />
                       </button>
@@ -393,7 +396,7 @@ export default function Journal() {
         )}
       </Section>
 
-      <button onClick={() => ouvrir()} aria-label="Nouvelle opération"
+      <button onClick={() => ouvrir()} aria-label={t('journal.nouvelleOperation')}
               className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 grid
                          h-14 w-14 place-items-center rounded-full bg-apex-gold text-white
                          shadow-pop transition active:scale-95">
@@ -402,32 +405,32 @@ export default function Journal() {
 
       <Sheet
         open={Boolean(brouillon)}
-        titre={brouillon && ecritures.some((e) => e.id === brouillon.id) ? 'Modifier l’opération' : 'Nouvelle opération'}
+        titre={brouillon && ecritures.some((e) => e.id === brouillon.id) ? t('journal.modifierOperation') : t('journal.nouvelleOperation')}
         onClose={() => setBrouillon(null)}
         footer={
           <div className="flex gap-2">
-            <Btn variant="ghost" className="flex-1" onClick={() => setBrouillon(null)}>Annuler</Btn>
+            <Btn variant="ghost" className="flex-1" onClick={() => setBrouillon(null)}>{t('commun.annuler')}</Btn>
             <Btn variant="gold" className="flex-[2]" onClick={() => void enregistrer()}
-                 disabled={!brouillon?.montant}>Enregistrer</Btn>
+                 disabled={!brouillon?.montant}>{t('commun.enregistrer')}</Btn>
           </div>
         }
       >
         {brouillon && (
           <>
             <div className="grid grid-cols-3 gap-2">
-              {TYPES.filter((t) => ['revenu', 'depense', 'epargne'].includes(t.id)).map((t) => (
-                <button key={t.id}
-                        onClick={() => setBrouillon({ ...brouillon, type: t.id, categorie: '' })}
+              {TYPES.filter((x) => ['revenu', 'depense', 'epargne'].includes(x.id)).map((type) => (
+                <button key={type.id}
+                        onClick={() => setBrouillon({ ...brouillon, type: type.id, categorie: '' })}
                         className={`rounded-xl border px-2 py-2.5 text-xs font-semibold transition ${
-                          brouillon.type === t.id
+                          brouillon.type === type.id
                             ? 'border-apex-gold bg-apex-cream text-apex-navy'
                             : 'border-surface-300 bg-white text-surface-600'}`}>
-                  {t.label}
+                  {labelType(t, type.id)}
                 </button>
               ))}
             </div>
 
-            <Field label="Montant">
+            <Field label={t('commun.montant')}>
               <div className="flex gap-2">
                 <MoneyInput autoFocus value={brouillon.montant}
                             onChange={(v) => setBrouillon({ ...brouillon, montant: v })}
@@ -444,33 +447,33 @@ export default function Journal() {
               )}
             </Field>
 
-            <Field label="Libellé">
-              <Input value={brouillon.libelle} placeholder="Courses du samedi"
+            <Field label={t('journal.libelle')}>
+              <Input value={brouillon.libelle} placeholder={t('journal.libellePlaceholder')}
                      onChange={(e) => setBrouillon({ ...brouillon, libelle: e.target.value })} />
             </Field>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Module">
+              <Field label={t('commun.module')}>
                 <Select value={brouillon.module}
                         onChange={(e) => setBrouillon({
                           ...brouillon, module: e.target.value as ModuleId, categorie: '',
                         })}>
-                  {MODULES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  {MODULES.map((m) => <option key={m.id} value={m.id}>{labelModule(t, m.id)}</option>)}
                 </Select>
               </Field>
-              <Field label="Catégorie">
+              <Field label={t('commun.categorie')}>
                 <Select value={brouillon.categorie}
                         onChange={(e) => setBrouillon({ ...brouillon, categorie: e.target.value })}>
-                  <option value="">— choisir —</option>
+                  <option value="">{t('commun.choisir')}</option>
                   {categoriesPour(p, brouillon.module, brouillon.type)
                     .map((c) => <option key={c} value={c}>{c}</option>)}
                 </Select>
               </Field>
-              <Field label="Sous-catégorie" hint="Le détail : « Yango », « marché », « Gbaka »…">
+              <Field label={t('commun.sousCategorie')} hint={t('journal.sousCategorieAide')}>
                 <Input
                   list="sous-categories"
                   value={brouillon.sousCategorie ?? ''}
-                  placeholder="Précisez"
+                  placeholder={t('journal.sousCategoriePlaceholder')}
                   onChange={(e) => setBrouillon({
                     ...brouillon, sousCategorie: e.target.value || undefined,
                   })}
@@ -481,24 +484,24 @@ export default function Journal() {
                   ))}
                 </datalist>
               </Field>
-              <Field label="Date">
+              <Field label={t('commun.date')}>
                 <Input type="date" value={brouillon.date}
                        onChange={(e) => setBrouillon({ ...brouillon, date: e.target.value })} />
               </Field>
-              <Field label="Compte">
+              <Field label={t('commun.compte')}>
                 <Select value={brouillon.compteId ?? ''}
                         onChange={(e) => setBrouillon({ ...brouillon, compteId: e.target.value || undefined })}>
-                  <option value="">— aucun —</option>
+                  <option value="">{t('commun.aucun')}</option>
                   {comptes.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
                 </Select>
               </Field>
               {['epargne', 'investissement', 'transfert'].includes(brouillon.type) && (
-                <Field label="Compte destination" hint="Où l’argent est déposé.">
+                <Field label={t('journal.compteDestination')} hint={t('journal.compteDestinationAide')}>
                   <Select value={brouillon.compteCibleId ?? ''}
                           onChange={(e) => setBrouillon({
                             ...brouillon, compteCibleId: e.target.value || undefined,
                           })}>
-                    <option value="">— non précisé —</option>
+                    <option value="">{t('commun.nonPrecise')}</option>
                     {comptes.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nom}{c.etablissement ? ` — ${c.etablissement}` : ''}
@@ -508,48 +511,48 @@ export default function Journal() {
                 </Field>
               )}
               {TYPES_TIERS.includes(brouillon.type) && (
-                <Field label="Tiers" hint="À qui vous avez prêté, ou de qui vous avez emprunté.">
-                  <Input value={brouillon.tiers ?? ''} placeholder="Nom de la personne"
+                <Field label={t('commun.tiers')} hint={t('journal.tiersAide')}>
+                  <Input value={brouillon.tiers ?? ''} placeholder={t('journal.tiersPlaceholder')}
                          onChange={(e) => setBrouillon({
                            ...brouillon, tiers: e.target.value || undefined,
                          })} />
                 </Field>
               )}
-              <Field label="Type d’opération">
+              <Field label={t('journal.typeOperation')}>
                 <Select value={brouillon.type}
                         onChange={(e) => setBrouillon({ ...brouillon, type: e.target.value as TypeOp })}>
-                  {TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  {TYPES.map((x) => <option key={x.id} value={x.id}>{labelType(t, x.id)}</option>)}
                 </Select>
               </Field>
-              <Field label="Statut">
+              <Field label={t('commun.statut')}>
                 <Select value={brouillon.statut}
                         onChange={(e) => setBrouillon({ ...brouillon, statut: e.target.value as Statut })}>
-                  {STATUTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  {STATUTS.map((x) => <option key={x.id} value={x.id}>{labelStatut(t, x.id)}</option>)}
                 </Select>
               </Field>
-              <Field label="Nature">
+              <Field label={t('commun.nature')}>
                 <Select value={brouillon.nature ?? ''}
                         onChange={(e) => setBrouillon({
                           ...brouillon, nature: (e.target.value || undefined) as Ecriture['nature'],
                         })}>
-                  <option value="">— non précisée —</option>
-                  {NATURES.map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
+                  <option value="">{t('commun.nonPrecise')}</option>
+                  {NATURES.map((n) => <option key={n.id} value={n.id}>{labelNature(t, n.id)}</option>)}
                 </Select>
               </Field>
-              <Field label="Moyen de paiement">
+              <Field label={t('journal.moyenPaiement')}>
                 <Select value={brouillon.moyen ?? ''}
                         onChange={(e) => setBrouillon({ ...brouillon, moyen: e.target.value || undefined })}>
-                  <option value="">— aucun —</option>
+                  <option value="">{t('commun.aucun')}</option>
                   {moyensDe(p).map((m) => <option key={m} value={m}>{m}</option>)}
                 </Select>
               </Field>
             </div>
 
             {rattachables.length > 0 && (
-              <Field label="Rattacher à" hint="Un bien, un projet, un objectif ou un crédit.">
+              <Field label={t('journal.rattacherA')} hint={t('journal.rattacherAide')}>
                 <Select value={brouillon.rattachement ?? ''}
                         onChange={(e) => setBrouillon({ ...brouillon, rattachement: e.target.value || undefined })}>
-                  <option value="">— aucun —</option>
+                  <option value="">{t('commun.aucun')}</option>
                   {rattachables.map((r) => (
                     <option key={r.id} value={r.id}>{r.groupe} — {r.nom}</option>
                   ))}
@@ -558,14 +561,14 @@ export default function Journal() {
             )}
 
             <Field
-              label="Descriptif"
-              hint="À quoi cette opération a servi — c’est ce qui rend la ligne vérifiable plus tard."
+              label={t('commun.descriptif')}
+              hint={t('journal.descriptifAide')}
             >
               <TextArea
                 value={brouillon.descriptif ?? ''}
                 placeholder={estSpirituel(brouillon.categorie)
-                  ? `Ex. : ${p.dimeEglise} — culte du dimanche`
-                  : 'Ex. : course maison → académie, aller-retour'}
+                  ? t('journal.descriptifEglise', { eglise: p.dimeEglise })
+                  : t('journal.descriptifPlaceholder')}
                 onFocus={() => {
                   if (!brouillon.descriptif && estSpirituel(brouillon.categorie)) {
                     setBrouillon({

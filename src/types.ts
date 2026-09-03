@@ -127,6 +127,8 @@ export interface Parametres {
   dimeTaux: number            // 0..1
   dimeAssiette: 'salaire' | 'salaire_primes' | 'tous'
   perimetre: 'general' | 'tout' | ModuleId
+  /** Langue de l'interface, des listes et des rapports. */
+  langue: string
   /** Église ou organisation bénéficiaire, reprise dans le descriptif des dons. */
   dimeEglise: string
   /**

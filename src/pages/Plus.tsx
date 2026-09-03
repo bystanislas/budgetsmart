@@ -11,10 +11,12 @@ import {
 } from '../components/kit'
 import {
   APP_BRAND, APP_CONTACT, APP_NAME, APP_SIGNATURE, DEVISES, FREQUENCES, MODULES,
-  labelModule,
 } from '../data/refs'
+import { labelFrequence, labelModule } from '../i18n'
 import CompteCloud from '../components/CompteCloud'
 import { categoriesPour } from '../lib/referentiel'
+import { estEpargne } from '../data/concepts'
+import { useLangue, useMois, useT } from '../i18n'
 import { db, getParametres, now, uid } from '../db'
 import {
   capitalRestant, creances, empruntsEnCours, mensualite, totalRattache,
@@ -23,7 +25,7 @@ import {
   exporterClasseur, exporterSauvegarde, importerSauvegarde, toutEffacer,
 } from '../lib/export-xlsx'
 import { exporterPdf } from '../lib/export-pdf'
-import { MOIS as MOIS_LISTE } from '../data/refs'
+
 import {
   TRIMESTRES, TYPES_PERIODE, bornes, type Periode, type TypePeriode,
 } from '../lib/periode'
@@ -61,6 +63,9 @@ function prochaine(date: string, frequence: Recurrent['frequence']): string {
 
 export default function Plus() {
   const nav = useNavigate()
+  const t = useT()
+  const langue = useLangue()
+  const nomsMois = useMois()
   const p = useLiveQuery(() => getParametres(), [])
   const ecritures = useLiveQuery(() => db.ecritures.toArray(), [], [])
   const comptes = useLiveQuery(() => db.comptes.orderBy('nom').toArray(), [], [])
@@ -102,7 +107,7 @@ export default function Plus() {
     await db.ecritures.put({
       id: uid(), createdAt: now(), updatedAt: now(),
       date,
-      type: r.categorie === 'Épargne (versement)' ? 'epargne' : 'depense',
+      type: estEpargne(r.categorie) ? 'epargne' : 'depense',
       module: r.module,
       categorie: r.categorie,
       libelle: r.libelle,
@@ -117,7 +122,7 @@ export default function Plus() {
     await db.recurrents.put({
       ...r, prochaineEcheance: prochaine(date, r.frequence), updatedAt: now(),
     })
-    annonce(`« ${r.libelle} » a été ajouté au journal du ${date.split('-').reverse().join('/')}.`)
+    annonce(t('plus.recurrentAjoute', { libelle: r.libelle, date: date.split('-').reverse().join('/') }))
   }
 
   const lancerExport = async (format: 'xlsx' | 'pdf') => {
@@ -126,9 +131,9 @@ export default function Plus() {
       const nom = format === 'xlsx'
         ? await exporterClasseur(periodeCourante)
         : await exporterPdf(periodeCourante)
-      annonce(`« ${nom} » téléchargé.`)
+      annonce(t('plus.telecharge', { nom }))
     } catch {
-      annonce('L’export a échoué. Réessayez depuis un navigateur récent.')
+      annonce(t('plus.exportEchoue'))
     } finally {
       setEnCours('')
     }
@@ -137,9 +142,9 @@ export default function Plus() {
   const restaurer = async (f: File) => {
     try {
       await importerSauvegarde(f)
-      annonce('Sauvegarde restaurée. Toutes les pages sont à jour.')
+      annonce(t('plus.sauvegardeRestauree'))
     } catch {
-      annonce('Fichier de sauvegarde illisible.')
+      annonce(t('plus.sauvegardeIllisible'))
     }
   }
 
@@ -164,16 +169,16 @@ export default function Plus() {
 
       <CompteCloud annonce={annonce} />
 
-      <Section title="Réglages">
+      <Section title={t('plus.reglages')}>
         <Card onClick={() => nav('/parametres')} className="flex items-center gap-3 p-3">
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-apex-navy text-white">
             <UserCog size={20} strokeWidth={2.2} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-apex-navy">Mes informations & paramètres</p>
+            <p className="text-sm font-bold text-apex-navy">{t('plus.mesInformations')}</p>
             <p className="truncate text-xs text-surface-500">
-              {p.raisonSociale || 'À compléter'} · {p.deviseBase} · dîme{' '}
-              {p.dimeActive ? `activée à ${pct(p.dimeTaux)}` : 'désactivée'}
+              {p.raisonSociale || t('plus.aCompleter')} · {p.deviseBase} {' '}
+              {p.dimeActive ? t('plus.dimeActivee', { taux: pct(p.dimeTaux) }) : t('plus.dimeDesactivee')}
             </p>
           </div>
         </Card>
@@ -181,23 +186,23 @@ export default function Plus() {
 
       {/* ---------------------------------------------------------- objectifs */}
       <Section
-        title="Objectifs d’épargne"
+        title={t('plus.objectifs')}
         action={
           <Btn variant="ghost" className="!px-3 !py-1.5 text-xs"
                onClick={() => setObjectif(objectifVierge())}>
-            <PlusIcon size={14} /> Ajouter
+            <PlusIcon size={14} /> {t('commun.ajouter')}
           </Btn>
         }
       >
         {objectifs.length > 0 && (
           <div className="grid grid-cols-2 gap-2.5">
-            <Kpi label="Total visé" valeur={fmt(p, totalObjectifs, { court: true })} ton="navy" />
-            <Kpi label="Déjà constitué" valeur={fmt(p, acquisObjectifs, { court: true })}
+            <Kpi label={t('plus.totalVise')} valeur={fmt(p, totalObjectifs, { court: true })} ton="navy" />
+            <Kpi label={t('plus.dejaConstitue')} valeur={fmt(p, acquisObjectifs, { court: true })}
                  ton="green" note={totalObjectifs ? pct(acquisObjectifs / totalObjectifs) : undefined} />
           </div>
         )}
         {objectifs.length === 0 ? (
-          <Vide texte="Aucun objectif. Fixez une cible : voyage, apport, matelas de sécurité…" />
+          <Vide texte={t('plus.aucunObjectif')} />
         ) : (
           <div className="space-y-2">
             {objectifs.map((o) => {
@@ -212,16 +217,16 @@ export default function Plus() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-apex-navy">{o.nom}</p>
                       <p className="text-2xs text-surface-500">
-                        {labelModule(o.module)}
+                        {labelModule(t, o.module)}
                         {o.echeance && ` · pour le ${o.echeance.split('-').reverse().join('/')}`}
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-1">
-                      <button onClick={() => setObjectif({ ...o })} aria-label="Modifier"
+                      <button onClick={() => setObjectif({ ...o })} aria-label={t('commun.modifier')}
                               className="rounded-lg p-1.5 text-surface-500 hover:bg-surface-100">
                         <Pencil size={15} />
                       </button>
-                      <button onClick={() => void db.objectifs.delete(o.id)} aria-label="Supprimer"
+                      <button onClick={() => void db.objectifs.delete(o.id)} aria-label={t('commun.supprimer')}
                               className="rounded-lg p-1.5 text-apex-red hover:bg-apex-blush">
                         <Trash2 size={15} />
                       </button>
@@ -244,22 +249,22 @@ export default function Plus() {
 
       {/* ------------------------------------------------------------ dettes */}
       <Section
-        title="Crédits & dettes"
+        title={t('plus.credits')}
         action={
           <Btn variant="ghost" className="!px-3 !py-1.5 text-xs"
                onClick={() => setDette(detteVierge())}>
-            <PlusIcon size={14} /> Ajouter
+            <PlusIcon size={14} /> {t('commun.ajouter')}
           </Btn>
         }
       >
         {dettes.length > 0 && (
           <div className="grid grid-cols-2 gap-2.5">
-            <Kpi label="Reste dû" valeur={fmt(p, resteDu, { court: true })} ton="red" />
-            <Kpi label="Charge mensuelle" valeur={fmt(p, chargeMensuelle, { court: true })} ton="orange" />
+            <Kpi label={t('plus.resteDu')} valeur={fmt(p, resteDu, { court: true })} ton="red" />
+            <Kpi label={t('plus.chargeMensuelle')} valeur={fmt(p, chargeMensuelle, { court: true })} ton="orange" />
           </div>
         )}
         {dettes.length === 0 ? (
-          <Vide texte="Aucun crédit enregistré. Ajoutez-en un pour suivre le capital restant dû." />
+          <Vide texte={t('plus.aucunCredit')} />
         ) : (
           <div className="space-y-2">
             {dettes.map((d) => {
@@ -274,15 +279,15 @@ export default function Plus() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-apex-navy">{d.nom}</p>
                       <p className="truncate text-2xs text-surface-500">
-                        {d.organisme || 'Organisme non précisé'} · {pct(d.tauxAnnuel)} sur {d.dureeMois} mois
+                        {d.organisme || t('plus.organismeNonPrecise')} · {pct(d.tauxAnnuel)} sur {d.dureeMois} mois
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-1">
-                      <button onClick={() => setDette({ ...d })} aria-label="Modifier"
+                      <button onClick={() => setDette({ ...d })} aria-label={t('commun.modifier')}
                               className="rounded-lg p-1.5 text-surface-500 hover:bg-surface-100">
                         <Pencil size={15} />
                       </button>
-                      <button onClick={() => void db.dettes.delete(d.id)} aria-label="Supprimer"
+                      <button onClick={() => void db.dettes.delete(d.id)} aria-label={t('commun.supprimer')}
                               className="rounded-lg p-1.5 text-apex-red hover:bg-apex-blush">
                         <Trash2 size={15} />
                       </button>
@@ -309,7 +314,7 @@ export default function Plus() {
 
       {/* ---------------------------------------------------- prêts & emprunts */}
       {(creances(ecritures).length > 0 || empruntsEnCours(ecritures).length > 0) && (
-        <Section title="Prêts & emprunts en cours">
+        <Section title={t('plus.pretsEmprunts')}>
           <div className="space-y-2">
             {[
               ...creances(ecritures).map((c) => ({ ...c, sens: 'du' as const })),
@@ -326,8 +331,8 @@ export default function Plus() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-apex-navy">{c.tiers}</p>
                     <p className="truncate text-2xs text-surface-500">
-                      {c.sens === 'du' ? 'Vous a emprunté' : 'Vous lui devez'}{' '}
-                      {fmt(p, c.avance)} · déjà réglé {fmt(p, c.regle)} · dernière opération le{' '}
+                      {c.sens === 'du' ? t('plus.ilsMeDoivent') : t('plus.jeDois')}{' '}
+                      {fmt(p, c.avance)} · {fmt(p, c.regle)} {' '}
                       {c.dernier.split('-').reverse().join('/')}
                     </p>
                   </div>
@@ -340,25 +345,23 @@ export default function Plus() {
               ))}
           </div>
           <p className="text-2xs leading-relaxed text-surface-500">
-            Ces encours se construisent tout seuls à partir du journal : saisissez un
-            « Prêt accordé », un « Emprunt reçu » ou un « Remboursement reçu », en nommant
-            le tiers dans le descriptif.
+            {t('plus.pretsAide')}
           </p>
         </Section>
       )}
 
       {/* -------------------------------------------------------- récurrents */}
       <Section
-        title="Opérations récurrentes"
+        title={t('plus.recurrents')}
         action={
           <Btn variant="ghost" className="!px-3 !py-1.5 text-xs"
                onClick={() => setRecurrent(recurrentVierge())}>
-            <PlusIcon size={14} /> Ajouter
+            <PlusIcon size={14} /> {t('commun.ajouter')}
           </Btn>
         }
       >
         {recurrents.length === 0 ? (
-          <Vide texte="Loyer, abonnements, scolarité… enregistrez-les une fois et ajoutez-les au journal en un geste." />
+          <Vide texte={t('plus.aucunRecurrent')} />
         ) : (
           <div className="space-y-2">
             {recurrents.map((r) => {
@@ -371,28 +374,28 @@ export default function Plus() {
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 truncate text-sm font-bold text-apex-navy">
                       {r.libelle}
-                      {!r.actif && <Puce>en pause</Puce>}
-                      {r.actif && due && <Puce ton="attention">à passer</Puce>}
+                      {!r.actif && <Puce>{t('plus.enPause')}</Puce>}
+                      {r.actif && due && <Puce ton="attention">{t('plus.aPasser')}</Puce>}
                     </p>
                     <p className="truncate text-2xs text-surface-500">
                       {fmt(p, convertir(p, r.montant, r.devise))} ·{' '}
-                      {FREQUENCES.find((f) => f.id === r.frequence)?.label} ·{' '}
-                      {labelModule(r.module)}
+                      {labelFrequence(t, r.frequence)} ·{' '}
+                      {labelModule(t, r.module)}
                       {r.prochaineEcheance && ` · le ${r.prochaineEcheance.split('-').reverse().join('/')}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     {r.actif && (
-                      <button onClick={() => void genererRecurrent(r)} aria-label="Ajouter au journal"
+                      <button onClick={() => void genererRecurrent(r)} aria-label={t('plus.ajouterAuJournal')}
                               className="rounded-lg p-1.5 text-apex-green hover:bg-apex-mint">
                         <Zap size={15} />
                       </button>
                     )}
-                    <button onClick={() => setRecurrent({ ...r })} aria-label="Modifier"
+                    <button onClick={() => setRecurrent({ ...r })} aria-label={t('commun.modifier')}
                             className="rounded-lg p-1.5 text-surface-500 hover:bg-surface-100">
                       <Pencil size={15} />
                     </button>
-                    <button onClick={() => void db.recurrents.delete(r.id)} aria-label="Supprimer"
+                    <button onClick={() => void db.recurrents.delete(r.id)} aria-label={t('commun.supprimer')}
                             className="rounded-lg p-1.5 text-apex-red hover:bg-apex-blush">
                       <Trash2 size={15} />
                     </button>
@@ -405,33 +408,33 @@ export default function Plus() {
       </Section>
 
       {/* ------------------------------------------------------------ outils */}
-      <Section title="Rapports — Excel & PDF">
+      <Section title={t('plus.rapports')}>
         <Card className="overflow-hidden">
           <div className="bg-apex-navy px-3.5 py-2">
             <p className="text-2xs font-bold uppercase tracking-[.14em] text-white">
-              Période du rapport
+              {t('plus.periodeRapport')}
             </p>
           </div>
           <div className="space-y-3 p-3">
             <div className="grid grid-cols-4 gap-1.5">
-              {TYPES_PERIODE.map((t) => (
+              {TYPES_PERIODE.map((tp) => (
                 <button
-                  key={t.id}
-                  onClick={() => setPeriode({ ...periodeCourante, type: t.id as TypePeriode })}
+                  key={tp.id}
+                  onClick={() => setPeriode({ ...periodeCourante, type: tp.id as TypePeriode })}
                   className={`rounded-xl border px-1 py-2 text-2xs font-bold transition ${
-                    periodeCourante.type === t.id
+                    periodeCourante.type === tp.id
                       ? 'border-apex-gold bg-apex-cream text-apex-navy'
                       : 'border-surface-300 bg-white text-surface-600'
                   }`}
                 >
-                  {t.label}
+                  {t(tp.cle as never)}
                 </button>
               ))}
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
               {periodeCourante.type === 'jour' && (
-                <Field label="Jour">
+                <Field label={t('plus.jour')}>
                   <Input type="date" value={periodeCourante.date ?? aujourdhui()}
                          onChange={(e) => setPeriode({
                            ...periodeCourante,
@@ -441,26 +444,26 @@ export default function Plus() {
                 </Field>
               )}
               {periodeCourante.type === 'mois' && (
-                <Field label="Mois">
+                <Field label={t('commun.mois')}>
                   <Select value={periodeCourante.mois ?? 1}
                           onChange={(e) => setPeriode({
                             ...periodeCourante, mois: Number(e.target.value),
                           })}>
-                    {MOIS_LISTE.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                    {nomsMois.long.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                   </Select>
                 </Field>
               )}
               {periodeCourante.type === 'trimestre' && (
-                <Field label="Trimestre">
+                <Field label={t('plus.trimestre')}>
                   <Select value={periodeCourante.trimestre ?? 1}
                           onChange={(e) => setPeriode({
                             ...periodeCourante, trimestre: Number(e.target.value),
                           })}>
-                    {TRIMESTRES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                    {TRIMESTRES.map((q) => <option key={q.id} value={q.id}>{t(q.cle as never)}</option>)}
                   </Select>
                 </Field>
               )}
-              <Field label="Année">
+              <Field label={t('commun.annee')}>
                 <Select value={periodeCourante.annee}
                         onChange={(e) => setPeriode({
                           ...periodeCourante, annee: Number(e.target.value),
@@ -472,41 +475,39 @@ export default function Plus() {
             </div>
 
             <p className="rounded-xl bg-surface-50 px-3 py-2 text-2xs text-surface-600">
-              {bornes(periodeCourante).libelle} — du{' '}
-              {bornes(periodeCourante).debut.split('-').reverse().join('/')} au{' '}
-              {bornes(periodeCourante).fin.split('-').reverse().join('/')}
+              {bornes(periodeCourante, langue).libelle} — {t('plus.du')}{' '}
+              {bornes(periodeCourante, langue).debut.split('-').reverse().join('/')} {t('plus.au')}{' '}
+              {bornes(periodeCourante, langue).fin.split('-').reverse().join('/')}
             </p>
 
             <div className="grid grid-cols-2 gap-2">
               <Btn variant="primary" disabled={enCours !== ''}
                    onClick={() => void lancerExport('xlsx')}>
                 <FileSpreadsheet size={16} />
-                {enCours === 'xlsx' ? 'Export…' : 'Excel'}
+                {enCours === 'xlsx' ? t('plus.exportEnCours') : 'Excel'}
               </Btn>
               <Btn variant="gold" disabled={enCours !== ''}
                    onClick={() => void lancerExport('pdf')}>
                 <FileText size={16} />
-                {enCours === 'pdf' ? 'Export…' : 'PDF'}
+                {enCours === 'pdf' ? t('plus.exportEnCours') : 'PDF'}
               </Btn>
             </div>
             <p className="text-2xs leading-relaxed text-surface-500">
-              Les deux documents reprennent le journal détaillé (catégorie, sous-catégorie,
-              descriptif, tiers, compte), les dépenses par sous-catégorie, l’épargne et son
-              établissement, les prêts et emprunts en cours, et la dîme.
+              {t('plus.rapportsAide')}
             </p>
           </div>
         </Card>
       </Section>
 
-      <Section title="Données & sauvegarde">
+      <Section title={t('plus.donnees')}>
         <div className="grid gap-2.5 sm:grid-cols-2">
           <Card onClick={() => void exporterSauvegarde()} className="flex items-center gap-3 p-3">
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-apex-navy text-white">
               <Download size={20} strokeWidth={2.2} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-apex-navy">Sauvegarder (JSON)</p>
-              <p className="text-2xs text-surface-500">Copie intégrale, à conserver</p>
+              <p className="text-sm font-bold text-apex-navy">{t('plus.sauvegarder')}</p>
+              <p className="text-2xs text-surface-500">{t('plus.sauvegarderSous')}</p>
             </div>
           </Card>
 
@@ -515,8 +516,8 @@ export default function Plus() {
               <Upload size={20} strokeWidth={2.2} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-apex-navy">Restaurer une sauvegarde</p>
-              <p className="text-2xs text-surface-500">Remplace les données de l’appareil</p>
+              <p className="text-sm font-bold text-apex-navy">{t('plus.restaurer')}</p>
+              <p className="text-2xs text-surface-500">{t('plus.restaurerSous')}</p>
             </div>
           </Card>
 
@@ -525,8 +526,8 @@ export default function Plus() {
               <RotateCcw size={20} strokeWidth={2.2} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-apex-red">Tout effacer</p>
-              <p className="text-2xs text-surface-500">Repartir d’une base vierge</p>
+              <p className="text-sm font-bold text-apex-red">{t('plus.toutEffacer')}</p>
+              <p className="text-2xs text-surface-500">{t('plus.toutEffacerSous')}</p>
             </div>
           </Card>
         </div>
@@ -539,66 +540,64 @@ export default function Plus() {
           }}
         />
         <p className="text-2xs leading-relaxed text-surface-500">
-          Vos données restent sur cet appareil : rien n’est envoyé sur Internet. Pensez à
-          sauvegarder régulièrement, surtout avant de changer de téléphone.
+          {t('plus.donneesAide')}
         </p>
       </Section>
 
       {/* ----------------------------------------------------------- à propos */}
-      <Section title="À propos">
+      <Section title={t('plus.aPropos')}>
         <Card className="space-y-1.5 p-4 text-center">
           <p className="text-base font-bold text-apex-navy">{APP_NAME}</p>
           <p className="text-xs font-semibold text-apex-gold">{APP_BRAND}</p>
           <p className="pt-1 text-2xs text-surface-500">{APP_SIGNATURE}</p>
           <p className="text-2xs text-surface-500">{APP_CONTACT}</p>
           <p className="pt-1 text-2xs text-surface-400">
-            © {new Date().getFullYear()} APEX AFRICA. Marque et contenus protégés.
+            {t('plus.droits', { annee: new Date().getFullYear() })}
           </p>
         </Card>
       </Section>
 
       {/* ----------------------------------------------- formulaire objectif */}
       <Sheet
-        open={Boolean(objectif)} titre="Objectif d’épargne"
+        open={Boolean(objectif)} titre={t('plus.objectifTitre')}
         onClose={() => setObjectif(null)}
         footer={
           <Btn className="w-full" onClick={async () => {
             if (!objectif?.nom.trim()) return
             await enregistrer(db.objectifs, objectif)
             setObjectif(null)
-          }}>Enregistrer</Btn>
+          }}>{t('commun.enregistrer')}</Btn>
         }
       >
         {objectif && (
           <>
-            <Field label="Nom de l’objectif">
-              <Input value={objectif.nom} placeholder="Apport terrain, voyage, sécurité…"
+            <Field label={t('plus.nomObjectif')}>
+              <Input value={objectif.nom} placeholder={t('plus.nomObjectifPlaceholder')}
                      onChange={(e) => setObjectif({ ...objectif, nom: e.target.value })} />
             </Field>
-            <Field label="Module concerné">
+            <Field label={t('plus.moduleConcerne')}>
               <Select value={objectif.module}
                       onChange={(e) => setObjectif({ ...objectif, module: e.target.value as ModuleId })}>
-                {MODULES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                {MODULES.map((m) => <option key={m.id} value={m.id}>{labelModule(t, m.id)}</option>)}
               </Select>
             </Field>
             <Field label={`Montant cible (${p.deviseBase})`}>
               <MoneyInput value={objectif.cible}
                           onChange={(v) => setObjectif({ ...objectif, cible: v })} />
             </Field>
-            <Field label="Échéance souhaitée">
+            <Field label={t('plus.echeanceSouhaitee')}>
               <Input type="date" value={objectif.echeance ?? ''}
                      onChange={(e) => setObjectif({ ...objectif, echeance: e.target.value })} />
             </Field>
-            <Field label="Compte dédié" hint="Facultatif : le compte sur lequel l’épargne est placée.">
+            <Field label={t('plus.compteDedie')} hint={t('plus.compteDedieAide')}>
               <Select value={objectif.compteId ?? ''}
                       onChange={(e) => setObjectif({ ...objectif, compteId: e.target.value || undefined })}>
-                <option value="">—</option>
+                <option value="">{t('commun.aucun')}</option>
                 {comptes.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
               </Select>
             </Field>
             <p className="rounded-xl bg-apex-cream p-3 text-2xs leading-relaxed text-apex-navy">
-              Dans le journal, rattachez vos versements à cet objectif : la barre
-              d’avancement se remplit toute seule.
+              {t('plus.objectifAide')}
             </p>
           </>
         )}
@@ -606,23 +605,23 @@ export default function Plus() {
 
       {/* -------------------------------------------------- formulaire dette */}
       <Sheet
-        open={Boolean(dette)} titre="Crédit / dette"
+        open={Boolean(dette)} titre={t('plus.creditTitre')}
         onClose={() => setDette(null)}
         footer={
           <Btn className="w-full" onClick={async () => {
             if (!dette?.nom.trim()) return
             await enregistrer(db.dettes, dette)
             setDette(null)
-          }}>Enregistrer</Btn>
+          }}>{t('commun.enregistrer')}</Btn>
         }
       >
         {dette && (
           <>
-            <Field label="Intitulé">
-              <Input value={dette.nom} placeholder="Crédit immobilier, prêt véhicule…"
+            <Field label={t('plus.intitule')}>
+              <Input value={dette.nom} placeholder={t('plus.intitulePlaceholder')}
                      onChange={(e) => setDette({ ...dette, nom: e.target.value })} />
             </Field>
-            <Field label="Organisme prêteur">
+            <Field label={t('plus.organisme')}>
               <Input value={dette.organisme ?? ''}
                      onChange={(e) => setDette({ ...dette, organisme: e.target.value })} />
             </Field>
@@ -631,7 +630,7 @@ export default function Plus() {
                           onChange={(v) => setDette({ ...dette, capital: v })} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Taux annuel (%)">
+              <Field label={t('plus.tauxAnnuel')}>
                 <Input inputMode="decimal" value={dette.tauxAnnuel ? dette.tauxAnnuel * 100 : ''}
                        placeholder="7,5"
                        onChange={(e) => setDette({
@@ -639,17 +638,17 @@ export default function Plus() {
                          tauxAnnuel: (Number(e.target.value.replace(',', '.')) || 0) / 100,
                        })} />
               </Field>
-              <Field label="Durée (mois)">
+              <Field label={t('plus.dureeMois')}>
                 <Input inputMode="numeric" value={dette.dureeMois || ''}
                        onChange={(e) => setDette({ ...dette, dureeMois: Number(e.target.value) || 0 })} />
               </Field>
             </div>
-            <Field label="Première échéance">
+            <Field label={t('plus.premiereEcheance')}>
               <Input type="date" value={dette.premiereEcheance ?? ''}
                      onChange={(e) => setDette({ ...dette, premiereEcheance: e.target.value })} />
             </Field>
             <div className="rounded-xl bg-apex-navy p-3 text-center text-white">
-              <p className="text-2xs uppercase tracking-wider text-white/60">Mensualité calculée</p>
+              <p className="text-2xs uppercase tracking-wider text-white/60">{t('plus.mensualiteCalculee')}</p>
               <p className="text-lg font-bold">
                 {fmt(p, Math.round(mensualite(dette.capital, dette.tauxAnnuel, dette.dureeMois)))}
               </p>
@@ -660,20 +659,20 @@ export default function Plus() {
 
       {/* ---------------------------------------------- formulaire récurrent */}
       <Sheet
-        open={Boolean(recurrent)} titre="Opération récurrente"
+        open={Boolean(recurrent)} titre={t('plus.recurrentTitre')}
         onClose={() => setRecurrent(null)}
         footer={
           <Btn className="w-full" onClick={async () => {
             if (!recurrent?.libelle.trim()) return
             await enregistrer(db.recurrents, recurrent)
             setRecurrent(null)
-          }}>Enregistrer</Btn>
+          }}>{t('commun.enregistrer')}</Btn>
         }
       >
         {recurrent && (
           <>
-            <Field label="Libellé">
-              <Input value={recurrent.libelle} placeholder="Loyer, internet, scolarité…"
+            <Field label={t('journal.libelle')}>
+              <Input value={recurrent.libelle} placeholder={t('plus.recurrentPlaceholder')}
                      onChange={(e) => setRecurrent({ ...recurrent, libelle: e.target.value })} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -682,33 +681,33 @@ export default function Plus() {
                         onChange={(e) => setRecurrent({
                           ...recurrent, module: e.target.value as ModuleId, categorie: '',
                         })}>
-                  {MODULES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  {MODULES.map((m) => <option key={m.id} value={m.id}>{labelModule(t, m.id)}</option>)}
                 </Select>
               </Field>
-              <Field label="Fréquence">
+              <Field label={t('plus.frequence')}>
                 <Select value={recurrent.frequence}
                         onChange={(e) => setRecurrent({
                           ...recurrent, frequence: e.target.value as Recurrent['frequence'],
                         })}>
-                  {FREQUENCES.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+                  {FREQUENCES.map((f) => <option key={f.id} value={f.id}>{labelFrequence(t, f.id)}</option>)}
                 </Select>
               </Field>
             </div>
-            <Field label="Catégorie">
+            <Field label={t('commun.categorie')}>
               <Select value={recurrent.categorie}
                       onChange={(e) => setRecurrent({ ...recurrent, categorie: e.target.value })}>
-                <option value="">— choisir —</option>
+                <option value="">{t('commun.choisir')}</option>
                 {categoriesPour(p, recurrent.module, 'depense').map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </Select>
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Montant">
+              <Field label={t('commun.montant')}>
                 <MoneyInput value={recurrent.montant}
                             onChange={(v) => setRecurrent({ ...recurrent, montant: v })} />
               </Field>
-              <Field label="Devise">
+              <Field label={t('commun.devise')}>
                 <Select value={recurrent.devise || p.deviseBase}
                         onChange={(e) => setRecurrent({
                           ...recurrent,
@@ -720,14 +719,14 @@ export default function Plus() {
                 </Select>
               </Field>
             </div>
-            <Field label="Prochaine échéance">
+            <Field label={t('plus.prochaineEcheance')}>
               <Input type="date" value={recurrent.prochaineEcheance ?? ''}
                      onChange={(e) => setRecurrent({ ...recurrent, prochaineEcheance: e.target.value })} />
             </Field>
-            <Field label="Compte débité">
+            <Field label={t('plus.compteDebite')}>
               <Select value={recurrent.compteId ?? ''}
                       onChange={(e) => setRecurrent({ ...recurrent, compteId: e.target.value || undefined })}>
-                <option value="">—</option>
+                <option value="">{t('commun.aucun')}</option>
                 {comptes.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
               </Select>
             </Field>
@@ -735,7 +734,7 @@ export default function Plus() {
               <input type="checkbox" checked={recurrent.actif} className="h-4 w-4 accent-apex-gold"
                      onChange={(e) => setRecurrent({ ...recurrent, actif: e.target.checked })} />
               <span className="text-xs font-semibold text-apex-navy">
-                Active — proposée à chaque échéance
+                {t('plus.actif')}
               </span>
             </label>
           </>
@@ -744,32 +743,28 @@ export default function Plus() {
 
       {/* ------------------------------------------------- confirmation reset */}
       <Sheet
-        open={confirmation} titre="Tout effacer" onClose={() => setConfirmation(false)}
+        open={confirmation} titre={t('plus.toutEffacer')} onClose={() => setConfirmation(false)}
         footer={
           <div className="grid grid-cols-2 gap-2">
-            <Btn variant="ghost" onClick={() => setConfirmation(false)}>Annuler</Btn>
+            <Btn variant="ghost" onClick={() => setConfirmation(false)}>{t('commun.annuler')}</Btn>
             <Btn variant="danger" onClick={async () => {
               await toutEffacer()
               setConfirmation(false)
-              annonce('Toutes les données ont été effacées.')
+              annonce(t('plus.toutEfface'))
               nav('/')
-            }}>Effacer définitivement</Btn>
+            }}>{t('plus.effacerDefinitivement')}</Btn>
           </div>
         }
       >
         <div className="flex gap-3 rounded-xl bg-apex-blush p-3">
           <AlertTriangle size={20} className="shrink-0 text-apex-red" />
           <p className="text-xs leading-relaxed text-apex-navy">
-            Écritures, comptes, estimation, postes, objectifs, crédits et paramètres seront
-            supprimés de cet appareil. Cette action est <strong>irréversible</strong> :
-            exportez d’abord une sauvegarde si vous avez le moindre doute.
+            {t('plus.effacerAvertissement')}
           </p>
         </div>
         <TextArea
           readOnly
-          value={`${ecritures.length} écritures · ${comptes.length} comptes · `
-            + `${objectifs.length} objectifs · ${dettes.length} crédits · `
-            + `${recurrents.length} opérations récurrentes`}
+          value={t('plus.resume', { ecritures: ecritures.length, comptes: comptes.length, objectifs: objectifs.length, dettes: dettes.length, recurrents: recurrents.length })}
         />
       </Sheet>
     </div>

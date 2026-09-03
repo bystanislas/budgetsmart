@@ -8,7 +8,9 @@ import {
 import {
   Btn, Card, Field, Input, Kpi, MoneyInput, Section, Select, Sheet, Vide,
 } from '../components/kit'
-import { CATEGORIES, FAMILLES_MARIAGE, MOIS_COURT, couleurModule, labelModule } from '../data/refs'
+import { couleurModule } from '../data/refs'
+import { labelModule, useMois, useT } from '../i18n'
+import { categoriesDe, referentielLivre } from '../lib/referentiel'
 import { db, getParametres, now, stamp, uid } from '../db'
 import { parModule, totalRattache } from '../lib/compute'
 import { fmt, pct } from '../lib/money'
@@ -46,6 +48,8 @@ const CONFIG: Record<string, {
 const num = (p: Poste, cle: string) => Number(p.extra?.[cle] ?? 0) || 0
 
 export default function ModulePage() {
+  const t = useT()
+  const nomsMois = useMois()
   const { id } = useParams<{ id: string }>()
   const moduleId = (id ?? 'mariage') as Exclude<ModuleId, 'general'>
   const cfg = CONFIG[moduleId] ?? CONFIG.mariage
@@ -66,13 +70,14 @@ export default function ModulePage() {
   const totalPaye = postes.reduce((s, x) => s + paye(x), 0)
   const totalCa = postes.reduce((s, x) => s + encaisse(x), 0)
   const serie = parModule(ecritures, p.anneeTravail)[moduleId]
-    .map((v, i) => ({ nom: MOIS_COURT[i], valeur: v }))
+    .map((v, i) => ({ nom: nomsMois.court[i], valeur: v }))
 
+  const livre = referentielLivre(p.langue)
   const familles = moduleId === 'mariage'
-    ? FAMILLES_MARIAGE.map(([nom, idx]) => ({
+    ? livre.famillesMariage.map(([nom, idx]) => ({
         nom,
         montant: postes
-          .filter((x) => idx.includes(CATEGORIES.mariage.indexOf(x.categorie ?? '')))
+          .filter((x) => idx.includes(livre.categories.mariage.indexOf(x.categorie ?? '')))
           .reduce((s, x) => s + coutRetenu(x), 0),
       })).filter((f) => f.montant > 0)
     : []
@@ -88,7 +93,7 @@ export default function ModulePage() {
         <div className="px-4 py-3 text-white" style={{ background: couleurModule(moduleId) }}>
           <p className="text-base font-bold">{cfg.titre}</p>
           <p className="text-2xs text-white/75">
-            Cette page ne compte que le module {labelModule(moduleId)} — rien n’est mélangé
+            Cette page ne compte que le module {labelModule(t, moduleId)} — rien n’est mélangé
             avec votre budget courant.
           </p>
         </div>
@@ -102,15 +107,15 @@ export default function ModulePage() {
              valeur={fmt(p, totalPaye, { court: true })} ton="red"
              note={totalRetenu ? pct(totalPaye / totalRetenu) : undefined} />
         {moduleId === 'business'
-          ? <Kpi label="Marge réalisée" valeur={fmt(p, totalCa - totalPaye, { court: true })}
+          ? <Kpi label={t('module.margeRealisee')} valeur={fmt(p, totalCa - totalPaye, { court: true })}
                  ton={totalCa - totalPaye >= 0 ? 'green' : 'red'} note={`CA ${fmt(p, totalCa, { court: true })}`} />
-          : <Kpi label="Reste à payer" valeur={fmt(p, Math.max(0, totalRetenu - totalPaye), { court: true })}
+          : <Kpi label={t('module.resteAPayer')} valeur={fmt(p, Math.max(0, totalRetenu - totalPaye), { court: true })}
                  ton="orange" />}
       </div>
 
       <Section title={`${cfg.motItem}s`}
                action={<Btn variant="ghost" className="!px-3 !py-1.5 text-xs"
-                            onClick={() => setEdit(vierge())}><Plus size={14} /> Ajouter</Btn>}>
+                            onClick={() => setEdit(vierge())}><Plus size={14} /> {t('commun.ajouter')}</Btn>}>
         {postes.length === 0 ? (
           <Vide texte={`Aucun ${cfg.motItem.toLowerCase()} enregistré.`}
                 action={<Btn variant="gold" onClick={() => setEdit(vierge())}>
@@ -166,7 +171,7 @@ export default function ModulePage() {
       </Section>
 
       {familles.length > 0 && (
-        <Section title="Répartition par famille de postes">
+        <Section title={t('module.repartitionFamille')}>
           <Card className="divide-y divide-surface-200">
             {familles.map((f) => (
               <div key={f.nom} className="flex items-center justify-between px-4 py-2.5">
@@ -180,7 +185,7 @@ export default function ModulePage() {
         </Section>
       )}
 
-      <Section title={`Sorties ${labelModule(moduleId)} — mois par mois`}>
+      <Section title={`Sorties ${labelModule(t, moduleId)} — mois par mois`}>
         <Card className="p-3">
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={serie} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
@@ -202,21 +207,21 @@ export default function ModulePage() {
                     onClick={() => {
                       if (edit) void db.postes.put({ ...edit, updatedAt: now() })
                       setEdit(null)
-                    }}>Enregistrer</Btn>
+                    }}>{t('commun.enregistrer')}</Btn>
              }>
         {edit && (
           <>
-            <Field label="Nom">
+            <Field label={t('module.nom')}>
               <Input autoFocus value={edit.nom} onChange={(e) => setEdit({ ...edit, nom: e.target.value })} />
             </Field>
-            <Field label="Catégorie">
+            <Field label={t('commun.categorie')}>
               <Select value={edit.categorie ?? ''}
                       onChange={(e) => setEdit({ ...edit, categorie: e.target.value })}>
-                <option value="">— choisir —</option>
-                {CATEGORIES[moduleId].map((c) => <option key={c} value={c}>{c}</option>)}
+                <option value="">{t('commun.choisir')}</option>
+                {categoriesDe(p, moduleId).map((c) => <option key={c} value={c}>{c}</option>)}
               </Select>
             </Field>
-            <Field label={moduleId === 'business' ? 'Budget prévu' : 'Estimation'}>
+            <Field label={moduleId === 'business' ? t('module.budgetPrevu') : t('module.estimation')}>
               <MoneyInput value={edit.estimation}
                           onChange={(v) => setEdit({ ...edit, estimation: v })} />
             </Field>
@@ -234,13 +239,13 @@ export default function ModulePage() {
                     </Field>
                   ))}
                 </div>
-                <Field label="Devis retenu">
+                <Field label={t('module.devisRetenu')}>
                   <Select value={edit.devisRetenu}
                           onChange={(e) => setEdit({ ...edit, devisRetenu: Number(e.target.value) })}>
-                    <option value={-1}>Estimation</option>
-                    <option value={0}>Devis 1</option>
-                    <option value={1}>Devis 2</option>
-                    <option value={2}>Devis 3</option>
+                    <option value={-1}>{t('module.estimation')}</option>
+                    <option value={0}>{t('module.devisN', { n: 1 })}</option>
+                    <option value={1}>{t('module.devisN', { n: 2 })}</option>
+                    <option value={2}>{t('module.devisN', { n: 3 })}</option>
                   </Select>
                 </Field>
               </>
@@ -262,7 +267,7 @@ export default function ModulePage() {
               </Field>
             ))}
 
-            <Field label="Échéance">
+            <Field label={t('commun.echeance')}>
               <Input type="date" value={edit.echeance ?? ''}
                      onChange={(e) => setEdit({ ...edit, echeance: e.target.value })} />
             </Field>

@@ -91,8 +91,47 @@ export const PAYS: [code: string, nom: string, indicatif: string][] = [
   ['TR', 'Turquie', '+90'],
 ]
 
-export const indicatifDe = (pays: string): string =>
-  PAYS.find(([, nom]) => nom === pays)?.[2] ?? PAYS[0][2]
+/**
+ * Nom du pays dans la langue demandée. `Intl.DisplayNames` connaît déjà tous
+ * les pays dans toutes les langues : rien à traduire à la main ici, et une
+ * langue ajoutée à l'application est traduite d'office. Le nom français du
+ * tableau sert de secours si le navigateur ne connaît pas l'API.
+ */
+export function nomPays(code: string, langue: string): string {
+  const secours = PAYS.find(([c]) => c === code)?.[1] ?? code
+  try {
+    return new Intl.DisplayNames([langue], { type: 'region' }).of(code) ?? secours
+  } catch {
+    return secours
+  }
+}
+
+/** La liste, dans l'ordre choisi ici, mais nommée dans la langue de l'utilisateur. */
+export function paysLocalises(langue: string): [code: string, nom: string, indicatif: string][] {
+  return PAYS.map(([code, , indicatif]) => [code, nomPays(code, langue), indicatif])
+}
+
+/**
+ * Retrouve le code d'un pays à partir de son nom, quelle que soit la langue
+ * dans laquelle il a été enregistré : un utilisateur peut avoir choisi son
+ * pays en français puis basculé l'application en anglais.
+ */
+export function codePays(nom: string, langues: readonly string[] = ['fr', 'en']): string | undefined {
+  const cherche = nom.trim().toLocaleLowerCase()
+  if (!cherche) return undefined
+  const direct = PAYS.find(([, fr]) => fr.toLocaleLowerCase() === cherche)
+  if (direct) return direct[0]
+  for (const langue of langues) {
+    const trouve = PAYS.find(([code]) => nomPays(code, langue).toLocaleLowerCase() === cherche)
+    if (trouve) return trouve[0]
+  }
+  return undefined
+}
+
+export const indicatifDe = (pays: string): string => {
+  const code = codePays(pays)
+  return PAYS.find(([c]) => c === code)?.[2] ?? PAYS[0][2]
+}
 
 /**
  * Devine le pays depuis le fuseau horaire du navigateur — aucune permission,
@@ -183,10 +222,13 @@ const FUSEAU_VERS_PAYS: Record<string, string> = {
   'Asia/Beirut': 'Liban',
 }
 
-export function devinerPays(): string | undefined {
+export function devinerPays(langue = 'fr'): string | undefined {
   try {
     const fuseau = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return FUSEAU_VERS_PAYS[fuseau]
+    const francais = FUSEAU_VERS_PAYS[fuseau]
+    if (!francais) return undefined
+    const code = codePays(francais)
+    return code ? nomPays(code, langue) : francais
   } catch {
     return undefined
   }

@@ -2,7 +2,8 @@
  * Moteur de calcul — l'équivalent de la feuille « Calculs » du classeur.
  * Tout part des écritures ; rien n'est saisi deux fois.
  */
-import { CAT_DIME, CAT_DIME_LEGACY, sensDe } from '../data/refs'
+import { sensDe } from '../data/refs'
+import { estDime } from '../data/concepts'
 import type { Compte, Ecriture, LignePlan, ModuleId, Parametres, TypeOp } from '../types'
 
 /** Une écriture compte dans le réalisé si elle n'est ni annulée ni seulement prévue. */
@@ -38,7 +39,11 @@ export interface MoisAgrege {
   ecartBudget: number
 }
 
-const MOIS_COURT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
+/**
+ * Repère technique : l'agrégat porte un indice de mois, jamais un libellé.
+ * Le nom affiché vient de la langue courante, côté interface.
+ */
+const INDICE_MOIS = Array.from({ length: 12 }, (_, i) => String(i + 1))
 
 export function agregerAnnee(
   p: Parametres, ecritures: Ecriture[], plan: LignePlan[], annee = p.anneeTravail,
@@ -74,7 +79,7 @@ export function agregerAnnee(
     cumul += solde
     return {
       mois: i + 1,
-      nom: MOIS_COURT[i],
+      nom: INDICE_MOIS[i],
       revenus: b.revenu,
       emprunts: b.emprunt,
       remboursementsRecus: b.remboursement_recu,
@@ -144,10 +149,9 @@ export function calculerDime(
           (e.categorie === 'Salaire' || e.categorie === 'Prime / 13e mois'))
       if (ok) assiette += e.montantBase
     }
-    // L'offrande n'est pas la dîme : seule la dîme éteint la dîme due.
-    if (e.type === 'depense' && (e.categorie === CAT_DIME || e.categorie === CAT_DIME_LEGACY)) {
-      versee += e.montantBase
-    }
+    // L'offrande n'est pas la dîme : seule la dîme éteint la dîme due,
+    // quelle que soit la langue dans laquelle elle a été saisie.
+    if (e.type === 'depense' && estDime(e.categorie)) versee += e.montantBase
   }
   const due = Math.round(assiette * p.dimeTaux)
   return { assiette, due, versee, reste: Math.max(0, due - versee) }
@@ -197,36 +201,48 @@ export function capitalRestant(
   return Math.max(0, capital * f - m * ((f - 1) / i))
 }
 
-export interface Alerte { ton: 'ok' | 'attention' | 'grave' | 'neutre'; texte: string }
+export interface Alerte {
+  ton: 'ok' | 'attention' | 'grave' | 'neutre'
+  /** Clé de traduction, résolue à l'affichage. */
+  cle: string
+  valeurs?: Record<string, string | number>
+}
 
 export function alertes(
   p: Parametres, mois: MoisAgrege, dime: Dime, tresorerie: number, nbEcritures: number,
 ): Alerte[] {
   const a: Alerte[] = []
   a.push(mois.solde < 0
-    ? { ton: 'grave', texte: `Le mois est déficitaire. Réduisez les postes variables ou puisez dans vos réserves.` }
-    : { ton: 'ok', texte: 'Le mois est excédentaire.' })
+    ? { ton: 'grave', cle: 'alertes.deficitaire' }
+    : { ton: 'ok', cle: 'alertes.excedentaire' })
   a.push(mois.tauxEpargne < p.tauxEpargneCible
-    ? { ton: 'attention', texte: `Taux d’épargne de ${(mois.tauxEpargne * 100).toFixed(1)} % contre ${(p.tauxEpargneCible * 100).toFixed(0)} % visé.` }
-    : { ton: 'ok', texte: 'Objectif d’épargne atteint.' })
+    ? {
+      ton: 'attention',
+      cle: 'alertes.epargneFaible',
+      valeurs: {
+        actuel: `${(mois.tauxEpargne * 100).toFixed(1)} %`,
+        cible: `${(p.tauxEpargneCible * 100).toFixed(0)} %`,
+      },
+    }
+    : { ton: 'ok', cle: 'alertes.epargneAtteinte' })
   if (!mois.prevuDepenses) {
-    a.push({ ton: 'neutre', texte: 'Aucun budget saisi pour ce mois dans l’estimation annuelle.' })
+    a.push({ ton: 'neutre', cle: 'alertes.aucunBudget' })
   } else if (mois.depenses > mois.prevuDepenses) {
-    a.push({ ton: 'grave', texte: 'Budget de dépenses dépassé pour ce mois.' })
+    a.push({ ton: 'grave', cle: 'alertes.budgetDepasse' })
   } else if (mois.depenses > mois.prevuDepenses * p.seuilAlerte) {
-    a.push({ ton: 'attention', texte: 'Vous approchez du budget prévu pour ce mois.' })
+    a.push({ ton: 'attention', cle: 'alertes.budgetProche' })
   } else {
-    a.push({ ton: 'ok', texte: 'Dépenses contenues dans le budget.' })
+    a.push({ ton: 'ok', cle: 'alertes.budgetTenu' })
   }
   if (p.dimeActive) {
     a.push(dime.reste > 0
-      ? { ton: 'attention', texte: `Dîme : il reste ${dime.reste.toLocaleString('fr-FR')} à verser ce mois-ci.` }
-      : { ton: 'ok', texte: 'Dîme du mois à jour.' })
+      ? { ton: 'attention', cle: 'alertes.dimeReste', valeurs: { montant: dime.reste.toLocaleString() } }
+      : { ton: 'ok', cle: 'alertes.dimeAJour' })
   }
-  if (tresorerie < 0) a.push({ ton: 'grave', texte: 'Trésorerie de vos comptes négative.' })
-  else if (tresorerie < mois.depenses) a.push({ ton: 'attention', texte: 'Votre trésorerie couvre moins d’un mois de dépenses.' })
-  else a.push({ ton: 'ok', texte: 'Trésorerie confortable.' })
-  if (!nbEcritures) a.push({ ton: 'neutre', texte: 'Commencez par saisir vos premières opérations.' })
+  if (tresorerie < 0) a.push({ ton: 'grave', cle: 'alertes.tresorerieNegative' })
+  else if (tresorerie < mois.depenses) a.push({ ton: 'attention', cle: 'alertes.tresorerieFaible' })
+  else a.push({ ton: 'ok', cle: 'alertes.tresorerieConfortable' })
+  if (!nbEcritures) a.push({ ton: 'neutre', cle: 'alertes.commencer' })
   return a
 }
 

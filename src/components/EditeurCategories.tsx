@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { Btn, Card, Input, Select } from './kit'
 import { MODULES } from '../data/refs'
 import { majParametres } from '../db'
-import { CATEGORIES_DEFAUT, SOUS_CATEGORIES_DEFAUT } from '../lib/referentiel'
+import { referentielLivre } from '../lib/referentiel'
+import { labelModule, useT } from '../i18n'
 import type { ModuleId, Parametres } from '../types'
 
 /**
@@ -14,6 +15,7 @@ import type { ModuleId, Parametres } from '../types'
  * réécrit pas le passé, elle disparaît simplement des propositions.
  */
 export default function EditeurCategories({ p }: { p: Parametres }) {
+  const t = useT()
   const [module, setModule] = useState<ModuleId>('general')
   const [ouverte, setOuverte] = useState<string | null>(null)
   const [nouvelle, setNouvelle] = useState('')
@@ -57,11 +59,12 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
     void majParametres({ sousCategories: { ...p.sousCategories, [categorie]: valeurs } })
 
   const reinitialiser = () => {
+    const livre = referentielLivre(p.langue)
     const sous = { ...p.sousCategories }
-    for (const [cle, valeurs] of Object.entries(SOUS_CATEGORIES_DEFAUT)) {
-      if (CATEGORIES_DEFAUT[module].includes(cle)) sous[cle] = [...valeurs]
+    for (const [cle, valeurs] of Object.entries(livre.sousCategories)) {
+      if (livre.categories[module].includes(cle)) sous[cle] = [...valeurs]
     }
-    enregistrer([...CATEGORIES_DEFAUT[module]], sous)
+    enregistrer([...livre.categories[module]], sous)
   }
 
   return (
@@ -70,11 +73,11 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
         <Select className="flex-1 !py-2 text-sm" value={module}
                 onChange={(e) => { setModule(e.target.value as ModuleId); setOuverte(null) }}>
           {MODULES.map((m) => (
-            <option key={m.id} value={m.id}>{m.label} — {(p.categories[m.id] ?? []).length}</option>
+            <option key={m.id} value={m.id}>{labelModule(t, m.id)} — {(p.categories[m.id] ?? []).length}</option>
           ))}
         </Select>
         <Btn variant="ghost" className="!px-3 !py-2 text-xs" onClick={reinitialiser}>
-          <RotateCcw size={14} /> Rétablir
+          <RotateCcw size={14} /> {t('commun.retablir')}
         </Btn>
       </div>
 
@@ -87,7 +90,7 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
               <div className="flex items-center gap-1.5 px-2 py-1.5">
                 <button
                   onClick={() => setOuverte(estOuverte ? null : c)}
-                  aria-label={estOuverte ? 'Replier' : 'Déplier'}
+                  aria-label={estOuverte ? t('categories.replier') : t('categories.deplier')}
                   className="rounded-lg p-1 text-surface-400 hover:bg-surface-100"
                 >
                   {estOuverte ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -103,7 +106,7 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
                 {sous.length > 0 && (
                   <span className="shrink-0 text-2xs text-surface-400">{sous.length}</span>
                 )}
-                <button onClick={() => supprimer(c)} aria-label={`Supprimer ${c}`}
+                <button onClick={() => supprimer(c)} aria-label={`${t('commun.supprimer')} ${c}`}
                         className="rounded-lg p-1 text-surface-300 hover:bg-apex-blush hover:text-apex-red">
                   <Trash2 size={15} />
                 </button>
@@ -112,7 +115,7 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
               {estOuverte && (
                 <div className="space-y-2 bg-surface-50 px-3 py-2.5">
                   <p className="text-2xs font-semibold uppercase tracking-wider text-surface-500">
-                    Sous-catégories proposées à la saisie
+                    {t('categories.sousCategoriesProposees')}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {sous.map((sc) => (
@@ -120,7 +123,7 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
                             className="flex items-center gap-1 rounded-lg border border-surface-200
                                        bg-white px-2 py-1 text-2xs font-semibold text-surface-600">
                         {sc}
-                        <button aria-label={`Retirer ${sc}`}
+                        <button aria-label={`${t('commun.supprimer')} ${sc}`}
                                 onClick={() => majSous(c, sous.filter((x) => x !== sc))}
                                 className="text-surface-400 hover:text-apex-red">
                           <X size={12} />
@@ -129,14 +132,14 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
                     ))}
                     {sous.length === 0 && (
                       <span className="text-2xs italic text-surface-400">
-                        Aucune — la saisie proposera directement le descriptif libre.
+                        {t('categories.aucuneSousCategorie')}
                       </span>
                     )}
                   </div>
                   <div className="flex gap-2">
                     <Input
                       className="!py-1.5 !text-xs"
-                      placeholder="Ajouter une sous-catégorie"
+                      placeholder={t('categories.ajouterSousCategorie')}
                       value={ouverte === c ? nouvelleSous : ''}
                       onChange={(e) => setNouvelleSous(e.target.value)}
                       onKeyDown={(e) => {
@@ -167,7 +170,7 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
       <div className="flex gap-2">
         <Input
           className="!py-2 !text-sm"
-          placeholder="Ajouter une catégorie"
+          placeholder={t('categories.ajouterCategorie')}
           value={nouvelle}
           onChange={(e) => setNouvelle(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && ajouter()}
@@ -178,9 +181,7 @@ export default function EditeurCategories({ p }: { p: Parametres }) {
       </div>
 
       <p className="text-2xs leading-relaxed text-surface-500">
-        Renommez une catégorie en cliquant dessus. Les opérations déjà saisies gardent leur
-        libellé d’origine : modifier le référentiel change ce qui est proposé demain, jamais
-        ce qui a été enregistré hier.
+        {t('categories.aide')}
       </p>
     </div>
   )

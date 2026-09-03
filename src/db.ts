@@ -1,7 +1,10 @@
 import Dexie, { type Table } from 'dexie'
-import {
-  CATEGORIES, DEVISES, EGLISE_DEFAUT, MOYENS, SOUS_CATEGORIES,
-} from './data/refs'
+import { DEVISES, EGLISE_DEFAUT } from './data/refs'
+import { EGLISE_DEFAUT_EN } from './data/refs-en'
+import { langueDuNavigateur } from './i18n/langues'
+import { fr } from './i18n/fr'
+import { en } from './i18n/en'
+import { referentielLivre } from './lib/referentiel'
 import type {
   Compte, Dette, Ecriture, LignePlan, Objectif, Parametres, Poste, Recurrent,
 } from './types'
@@ -48,6 +51,9 @@ export function stamp<T extends object>(v: T): T & { createdAt: string; updatedA
 
 const COURS_DEFAUT = Object.fromEntries(DEVISES.map(([code, , , taux]) => [code, taux]))
 
+const LANGUE_INITIALE = langueDuNavigateur()
+const LIVRE_INITIAL = referentielLivre(LANGUE_INITIALE)
+
 export const PARAMS_DEFAUT: Parametres = {
   id: 'app',
   raisonSociale: '', responsable: '', activite: '',
@@ -64,12 +70,14 @@ export const PARAMS_DEFAUT: Parametres = {
   dimeTaux: 0.1,
   dimeAssiette: 'tous',
   perimetre: 'general',
-  dimeEglise: EGLISE_DEFAUT,
-  // Le référentiel livré n'est qu'un point de départ : il est recopié ici,
-  // puis chacun le modifie depuis les paramètres.
-  categories: structuredClone(CATEGORIES),
-  sousCategories: structuredClone(SOUS_CATEGORIES),
-  moyens: [...MOYENS],
+  // Devinée au premier lancement, puis modifiable dans les paramètres.
+  langue: LANGUE_INITIALE,
+  dimeEglise: LANGUE_INITIALE === 'en' ? EGLISE_DEFAUT_EN : EGLISE_DEFAUT,
+  // Le référentiel livré n'est qu'un point de départ : celui de la langue
+  // détectée est recopié ici, puis chacun le modifie depuis les paramètres.
+  categories: structuredClone(LIVRE_INITIAL.categories),
+  sousCategories: structuredClone(LIVRE_INITIAL.sousCategories),
+  moyens: [...LIVRE_INITIAL.moyens],
   updatedAt: now(),
 }
 
@@ -85,6 +93,7 @@ export async function getParametres(): Promise<Parametres> {
       categories: p.categories ?? PARAMS_DEFAUT.categories,
       sousCategories: p.sousCategories ?? PARAMS_DEFAUT.sousCategories,
       moyens: p.moyens ?? PARAMS_DEFAUT.moyens,
+      langue: p.langue ?? PARAMS_DEFAUT.langue,
     }
   }
   await db.parametres.put(PARAMS_DEFAUT)
@@ -100,13 +109,16 @@ export async function majParametres(patch: Partial<Parametres>) {
 
 /** Comptes proposés au premier lancement : on peut démarrer sans rien configurer. */
 export async function amorcer() {
-  await getParametres()
+  const p = await getParametres()
   if ((await db.comptes.count()) === 0) {
+    // Les comptes proposés portent des noms dans la langue de l'utilisateur :
+    // ce sont des données, elles ne seront plus retraduites par la suite.
+    const dico = (p.langue === 'en' ? en : fr).parametres
     const base = [
-      { nom: 'Compte courant', nature: 'courant' as const },
-      { nom: 'Mobile Money', nature: 'mobile' as const },
-      { nom: 'Espèces', nature: 'especes' as const },
-      { nom: 'Épargne', nature: 'epargne' as const },
+      { nom: dico.natureCourant, nature: 'courant' as const },
+      { nom: dico.natureMobile, nature: 'mobile' as const },
+      { nom: dico.natureEspeces, nature: 'especes' as const },
+      { nom: dico.natureEpargne, nature: 'epargne' as const },
     ]
     await db.comptes.bulkPut(
       base.map((c) => stamp({ id: uid(), soldeOuverture: 0, ...c })),

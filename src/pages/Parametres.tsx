@@ -7,8 +7,12 @@ import {
   CAT_DIME, CAT_DON, CAT_OFFRANDE, DEVISES, ETABLISSEMENTS, MOIS, MODULES,
   MOYENS as MOYENS_LIVRES,
 } from '../data/refs'
-import { PAYS, devinerPays, indicatifDe } from '../data/pays'
+import { codePays, devinerPays, indicatifDe, nomPays, paysLocalises } from '../data/pays'
 import { useUtilisateur } from '../lib/auth'
+import { LANGUES, useT } from '../i18n'
+import { referentielIntact, referentielLivre } from '../lib/referentiel'
+import { EGLISE_DEFAUT } from '../data/refs'
+import { EGLISE_DEFAUT_EN } from '../data/refs-en'
 import { db, getParametres, majParametres, stamp, uid } from '../db'
 import { soldeCompte } from '../lib/compute'
 import { fmt, nomDevise, symboleDevise } from '../lib/money'
@@ -21,14 +25,16 @@ function decomposerTelephone(telephone: string, pays: string): [string, string] 
 }
 
 const NATURES_COMPTE = [
-  ['courant', 'Compte courant'], ['epargne', 'Épargne'], ['bloque', 'Épargne bloquée'],
-  ['mobile', 'Mobile Money'], ['especes', 'Espèces'], ['business', 'Business'],
-  ['autre', 'Autre'],
+  ['courant', 'parametres.natureCourant'], ['epargne', 'parametres.natureEpargne'],
+  ['bloque', 'parametres.natureBloque'], ['mobile', 'parametres.natureMobile'],
+  ['especes', 'parametres.natureEspeces'], ['business', 'parametres.natureBusiness'],
+  ['autre', 'parametres.natureAutre'],
 ] as const
 
 export default function Parametres() {
   const [moyen, setMoyen] = useState('')
   const utilisateur = useUtilisateur()
+  const t = useT()
   const p = useLiveQuery(() => getParametres(), [])
   const comptes = useLiveQuery(() => db.comptes.orderBy('nom').toArray(), [], [])
   const ecritures = useLiveQuery(() => db.ecritures.toArray(), [], [])
@@ -37,13 +43,14 @@ export default function Parametres() {
   // réseau ni permission. Ne s'applique que si rien n'a encore été choisi.
   useEffect(() => {
     if (p && !p.pays) {
-      const suggestion = devinerPays()
+      const suggestion = devinerPays(p.langue)
       if (suggestion) void majParametres({ pays: suggestion })
     }
   }, [p?.pays])
 
   if (!p) return null
 
+  const listePays = paysLocalises(p.langue)
   const set = (patch: Parameters<typeof majParametres>[0]) => void majParametres(patch)
   const [indicatifTel, numeroTel] = decomposerTelephone(p.telephone, p.pays)
 
@@ -52,6 +59,30 @@ export default function Parametres() {
   const requis = (label: string) => (utilisateur ? `${label} *` : label)
   const profilIncomplet = Boolean(utilisateur)
     && !(p.raisonSociale && p.telephone && p.email && p.adresse)
+
+  /**
+   * Changer de langue traduit aussi les listes livrées — mais seulement si
+   * l'utilisateur ne les a pas retouchées : ses propres libellés priment
+   * toujours sur une traduction automatique.
+   */
+  const changerLangue = (langue: string) => {
+    const patch: Parameters<typeof majParametres>[0] = { langue }
+    if (referentielIntact(p, p.langue)) {
+      const livre = referentielLivre(langue)
+      patch.categories = structuredClone(livre.categories)
+      patch.sousCategories = structuredClone(livre.sousCategories)
+      patch.moyens = [...livre.moyens]
+      const egliseLivree = p.langue === 'en' ? EGLISE_DEFAUT_EN : EGLISE_DEFAUT
+      if (p.dimeEglise === egliseLivree) {
+        patch.dimeEglise = langue === 'en' ? EGLISE_DEFAUT_EN : EGLISE_DEFAUT
+      }
+    }
+    // Le pays est enregistré sous son nom : on le réécrit dans la nouvelle
+    // langue pour qu'il reste sélectionné dans la liste.
+    const codePaysChoisi = p.pays ? codePays(p.pays) : undefined
+    if (codePaysChoisi) patch.pays = nomPays(codePaysChoisi, langue)
+    set(patch)
+  }
 
   const ajouterMoyen = () => {
     const v = moyen.trim()
@@ -64,14 +95,15 @@ export default function Parametres() {
     void db.comptes.put({ ...c, ...patch, updatedAt: new Date().toISOString() })
 
   const sections = [
-    ['identite', '① Identité'],
-    ['devise', '② Devise & période'],
-    ['soldes', '③ Soldes & objectifs'],
-    ['comptes', '④ Comptes'],
-    ['dime', '⑤ Dîme, offrandes & dons'],
-    ['categories', '⑥ Catégories'],
-    ['moyens', '⑦ Moyens de paiement'],
-    ['cours', '⑧ Cours des devises'],
+    ['identite', t('parametres.s1')],
+    ['devise', t('parametres.s2')],
+    ['soldes', t('parametres.s3')],
+    ['comptes', t('parametres.s4')],
+    ['dime', t('parametres.s5')],
+    ['categories', t('parametres.s6')],
+    ['moyens', t('parametres.s7')],
+    ['cours', t('parametres.s8')],
+    ['langue', t('parametres.s9')],
   ]
 
   return (
@@ -79,7 +111,7 @@ export default function Parametres() {
       <Card className="overflow-hidden">
         <div className="bg-apex-navy px-3.5 py-2">
           <p className="text-2xs font-bold uppercase tracking-[.14em] text-white">
-            Renseignez vos informations
+            {t('parametres.titre')}
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5 p-3">
@@ -94,46 +126,75 @@ export default function Parametres() {
         </div>
       </Card>
 
+      <div id="langue" className="scroll-mt-20" />
+      <Section title={t('parametres.langueSection')}>
+        <Card className="space-y-2.5 p-3">
+          <div className="grid grid-cols-2 gap-2">
+            {LANGUES.map((l) => (
+              <button
+                key={l.code}
+                onClick={() => changerLangue(l.code)}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm
+                            font-bold transition ${
+                  p.langue === l.code
+                    ? 'border-apex-gold bg-apex-cream text-apex-navy'
+                    : 'border-surface-300 bg-white text-surface-600'
+                }`}
+              >
+                <span className="text-lg">{l.drapeau}</span> {l.nom}
+              </button>
+            ))}
+          </div>
+          <p className="text-2xs leading-relaxed text-surface-500">
+            {t('parametres.langueAide')}
+          </p>
+          {!referentielIntact(p, p.langue) && (
+            <p className="rounded-xl bg-apex-cream p-2.5 text-2xs leading-relaxed text-apex-navy">
+              {t('parametres.langueReferentiel')}
+            </p>
+          )}
+        </Card>
+      </Section>
+
       <div id="identite" className="scroll-mt-20" />
-      <Section title="① Identité & coordonnées">
+      <Section title={t('parametres.identite')}>
         {profilIncomplet && (
           <Card className="border-apex-gold bg-apex-cream p-3 text-2xs leading-relaxed text-apex-navy">
-            Complétez les champs marqués d'une étoile : ce sont eux qui identifient votre
-            dossier et qui vous permettront de le retrouver depuis un autre appareil.
+            {t('parametres.profilIncomplet')}
           </Card>
         )}
         <Card className="grid gap-3 p-4 sm:grid-cols-2">
-          <Field label={requis('Raison sociale / Nom, prénom ou famille')}>
+          <Field label={requis(t('parametres.raisonSociale'))}>
             <Input value={p.raisonSociale} placeholder="APEX AFRICA"
                    onChange={(e) => set({ raisonSociale: e.target.value })} />
           </Field>
-          <Field label="Responsable / Titulaire">
+          <Field label={t('parametres.responsable')}>
             <Input value={p.responsable} onChange={(e) => set({ responsable: e.target.value })} />
           </Field>
-          <Field label="Activité / Fonction">
+          <Field label={t('parametres.activite')}>
             <Input value={p.activite} onChange={(e) => set({ activite: e.target.value })} />
           </Field>
-          <Field label={requis('Adresse')}>
+          <Field label={requis(t('parametres.adresse'))}>
             <Input value={p.adresse} onChange={(e) => set({ adresse: e.target.value })} />
           </Field>
-          <Field label="Ville">
+          <Field label={t('parametres.ville')}>
             <Input value={p.ville} placeholder="Abidjan"
                    onChange={(e) => set({ ville: e.target.value })} />
           </Field>
-          <Field label="Pays" hint="Deviné depuis votre fuseau horaire au premier lancement — à corriger si besoin.">
+          <Field label={t('parametres.pays')} hint={t('parametres.paysAide')}>
             <Select value={p.pays} onChange={(e) => set({ pays: e.target.value })}>
-              <option value="">— choisir —</option>
-              {PAYS.map(([code, nom]) => <option key={code} value={nom}>{nom}</option>)}
+              <option value="">{t('commun.choisir')}</option>
+              {listePays.map(([code, nom]) => <option key={code} value={nom}>{nom}</option>)}
             </Select>
           </Field>
-          <Field label={requis('Téléphone')}>
+          <Field label={requis(t('parametres.telephone'))}>
             <div className="flex gap-2">
               <Select
                 className="!w-24 shrink-0 !px-2"
                 value={indicatifTel}
                 onChange={(e) => set({ telephone: `${e.target.value} ${numeroTel}`.trim() })}
               >
-                {PAYS.map(([code, , indicatif]) => (
+                {listePays.map(([code, , indicatif]) => (
                   <option key={code} value={indicatif}>{indicatif} · {code}</option>
                 ))}
               </Select>
@@ -146,47 +207,47 @@ export default function Parametres() {
               />
             </div>
           </Field>
-          <Field label={requis('Email')}>
+          <Field label={requis(t('parametres.email'))}>
             <Input value={p.email} inputMode="email"
                    onChange={(e) => set({ email: e.target.value })} />
           </Field>
-          <Field label="Site web">
+          <Field label={t('parametres.siteWeb')}>
             <Input value={p.siteWeb} onChange={(e) => set({ siteWeb: e.target.value })} />
           </Field>
-          <Field label="RCCM / IFU / N° d’identification" hint="Facultatif">
+          <Field label={t('parametres.identifiant')} hint={t('commun.facultatif')}>
             <Input value={p.identifiant} onChange={(e) => set({ identifiant: e.target.value })} />
           </Field>
         </Card>
       </Section>
 
       <div id="devise" className="scroll-mt-20" />
-      <Section title="② Devise & période">
+      <Section title={t('parametres.deviseSection')}>
         <Card className="grid gap-3 p-4 sm:grid-cols-2">
-          <Field label="Devise de base"
-                 hint="À fixer avant de commencer à saisir : tous les totaux s’y expriment.">
+          <Field label={t('parametres.deviseBase')}
+                 hint={t('parametres.deviseAide')}>
             <Select value={p.deviseBase} onChange={(e) => set({ deviseBase: e.target.value })}>
               {DEVISES.map(([code]) => (
                 <option key={code} value={code}>
-                  {code} — {nomDevise(code)} ({symboleDevise(code)})
+                  {code} — {nomDevise(code, p.langue)} ({symboleDevise(code)})
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="Année de travail">
+          <Field label={t('parametres.anneeTravail')}>
             <Input type="number" value={p.anneeTravail} inputMode="numeric"
                    onChange={(e) => set({ anneeTravail: Number(e.target.value) || p.anneeTravail })} />
           </Field>
-          <Field label="Mois de suivi">
+          <Field label={t('parametres.moisSuivi')}>
             <Select value={p.moisSuivi} onChange={(e) => set({ moisSuivi: Number(e.target.value) })}>
               {MOIS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </Select>
           </Field>
-          <Field label="Périmètre d’analyse"
-                 hint="« Général seul » laisse le mariage, l’immobilier et le business à leurs propres pages.">
+          <Field label={t('parametres.perimetre')}
+                 hint={t('parametres.perimetreAide')}>
             <Select value={p.perimetre}
                     onChange={(e) => set({ perimetre: e.target.value as typeof p.perimetre })}>
-              <option value="general">Général seul</option>
-              <option value="tout">Tout confondu</option>
+              <option value="general">{t('parametres.perimetreGeneral')}</option>
+              <option value="tout">{t('parametres.perimetreTout')}</option>
               {MODULES.filter((m) => m.id !== 'general').map((m) => (
                 <option key={m.id} value={m.id}>{m.label}</option>
               ))}
@@ -196,18 +257,18 @@ export default function Parametres() {
       </Section>
 
       <div id="soldes" className="scroll-mt-20" />
-      <Section title="③ Soldes & objectifs">
+      <Section title={t('parametres.soldesSection')}>
         <Card className="grid gap-3 p-4 sm:grid-cols-2">
-          <Field label="Trésorerie initiale" hint="Vos disponibilités au 1er janvier.">
+          <Field label={t('parametres.tresorerieInitiale')} hint={t('parametres.tresorerieAide')}>
             <MoneyInput value={p.tresorerieInitiale}
                         onChange={(v) => set({ tresorerieInitiale: v })} />
           </Field>
-          <Field label="Taux d’épargne cible">
+          <Field label={t('parametres.tauxEpargneCible')}>
             <Input type="number" min={0} max={100} inputMode="numeric"
                    value={Math.round(p.tauxEpargneCible * 100)}
                    onChange={(e) => set({ tauxEpargneCible: Number(e.target.value) / 100 })} />
           </Field>
-          <Field label="Seuil d’alerte budget (%)">
+          <Field label={t('parametres.seuilAlerte')}>
             <Input type="number" min={0} max={100} inputMode="numeric"
                    value={Math.round(p.seuilAlerte * 100)}
                    onChange={(e) => set({ seuilAlerte: Number(e.target.value) / 100 })} />
@@ -217,13 +278,13 @@ export default function Parametres() {
 
       <div id="comptes" className="scroll-mt-20" />
       <Section
-        title="④ Mes comptes"
+        title={t('parametres.comptesSection')}
         action={
           <Btn variant="ghost" className="!px-3 !py-1.5 text-xs"
                onClick={() => void db.comptes.put(stamp({
-                 id: uid(), nom: 'Nouveau compte', nature: 'courant', soldeOuverture: 0,
+                 id: uid(), nom: t('parametres.nouveauCompte'), nature: 'courant', soldeOuverture: 0,
                }) as Compte)}>
-            <Plus size={14} /> Ajouter
+            <Plus size={14} /> {t('commun.ajouter')}
           </Btn>
         }
       >
@@ -234,14 +295,14 @@ export default function Parametres() {
                 <Input value={c.nom} onChange={(e) => majCompte(c, { nom: e.target.value })} />
                 <Select value={c.nature}
                         onChange={(e) => majCompte(c, { nature: e.target.value as Compte['nature'] })}>
-                  {NATURES_COMPTE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  {NATURES_COMPTE.map(([v, cle]) => <option key={v} value={v}>{t(cle)}</option>)}
                 </Select>
                 <MoneyInput value={c.soldeOuverture}
                             onChange={(v) => majCompte(c, { soldeOuverture: v })} />
                 <Input list="etablissements" value={c.etablissement ?? ''}
-                       placeholder="Banque, Wave, Orange Money…"
+                       placeholder={t('parametres.etablissementPlaceholder')}
                        onChange={(e) => majCompte(c, { etablissement: e.target.value })} />
-                <Input value={c.reference ?? ''} placeholder="Référence (4 derniers chiffres)"
+                <Input value={c.reference ?? ''} placeholder={t('parametres.referencePlaceholder')}
                        onChange={(e) => majCompte(c, { reference: e.target.value })} />
                 {c.nature === 'bloque' && (
                   <Input type="date" value={c.blocageJusqu ?? ''}
@@ -263,47 +324,46 @@ export default function Parametres() {
             {ETABLISSEMENTS.map((e) => <option key={e} value={e} />)}
           </datalist>
           <p className="text-2xs leading-relaxed text-surface-500">
-            Précisez l’établissement de chaque compte : une épargne doit pouvoir se retrouver
-            — quelle banque, quel opérateur, et jusqu’à quand elle est bloquée.
+            {t('parametres.comptesAide')}
           </p>
-          <Kpi label="Total disponible" valeur={fmt(p, total)} ton="navy" />
+          <Kpi label={t('parametres.totalDisponible')} valeur={fmt(p, total)} ton="navy" />
         </div>
       </Section>
 
       <div id="dime" className="scroll-mt-20" />
-      <Section title="⑤ Dîme, offrandes & dons">
+      <Section title={t('parametres.dimeSection')}>
         <Card className="grid gap-3 p-4 sm:grid-cols-2">
-          <Field label="Dîme activée"
-                 hint="Le montant dû est calculé chaque mois et comparé à ce que vous avez versé.">
+          <Field label={t('parametres.dimeActive')}
+                 hint={t('parametres.dimeActiveAide')}>
             <Select value={p.dimeActive ? 'oui' : 'non'}
                     onChange={(e) => set({ dimeActive: e.target.value === 'oui' })}>
-              <option value="non">Non</option>
-              <option value="oui">Oui</option>
+              <option value="non">{t('commun.non')}</option>
+              <option value="oui">{t('commun.oui')}</option>
             </Select>
           </Field>
-          <Field label="Taux (%)">
+          <Field label={t('parametres.dimeTaux')}>
             <Input type="number" min={0} max={100} inputMode="numeric"
                    value={Math.round(p.dimeTaux * 100)}
                    onChange={(e) => set({ dimeTaux: Number(e.target.value) / 100 })} />
           </Field>
-          <Field label="Assiette de calcul">
+          <Field label={t('parametres.dimeAssiette')}>
             <Select value={p.dimeAssiette}
                     onChange={(e) => set({ dimeAssiette: e.target.value as typeof p.dimeAssiette })}>
-              <option value="salaire">Salaire uniquement</option>
-              <option value="salaire_primes">Salaire + primes</option>
-              <option value="tous">Tous les revenus</option>
+              <option value="salaire">{t('parametres.assietteSalaire')}</option>
+              <option value="salaire_primes">{t('parametres.assietteSalairePrimes')}</option>
+              <option value="tous">{t('parametres.assietteTous')}</option>
             </Select>
           </Field>
           <Field
-            label="Église / organisation bénéficiaire"
-            hint="Reprise automatiquement dans le descriptif, avec la date. Modifiable à chaque saisie."
+            label={t('parametres.eglise')}
+            hint={t('parametres.egliseAide')}
           >
-            <Input value={p.dimeEglise} placeholder="Nom de votre église"
+            <Input value={p.dimeEglise} placeholder={t('parametres.eglise')}
                    onChange={(e) => set({ dimeEglise: e.target.value })} />
           </Field>
           <div className="sm:col-span-2 space-y-2 rounded-xl bg-surface-50 p-3">
             <p className="text-2xs font-semibold uppercase tracking-wider text-surface-500">
-              Trois catégories distinctes, trois usages
+              {t('parametres.troisCategories')}
             </p>
             <div className="flex flex-wrap gap-1.5">
               <Puce ton="attention">{CAT_DIME}</Puce>
@@ -311,22 +371,19 @@ export default function Parametres() {
               <Puce>{CAT_DON}</Puce>
             </div>
             <p className="text-2xs leading-relaxed text-surface-500">
-              Seule la <strong>{CAT_DIME}</strong> vient en déduction de la dîme due — c’est
-              elle que le calcul suit. L’<strong>{CAT_OFFRANDE.toLowerCase()}</strong> et le{' '}
-              <strong>{CAT_DON.toLowerCase()}</strong> sont des dépenses à part entière,
-              suivies séparément dans les récapitulatifs.
+              {t('parametres.dimeExplication', { dime: CAT_DIME, offrande: CAT_OFFRANDE.toLowerCase(), don: CAT_DON.toLowerCase() })}
             </p>
           </div>
         </Card>
       </Section>
 
       <div id="categories" className="scroll-mt-20" />
-      <Section title="⑥ Catégories & sous-catégories">
+      <Section title={t('parametres.categoriesSection')}>
         <EditeurCategories p={p} />
       </Section>
 
       <div id="moyens" className="scroll-mt-20" />
-      <Section title="⑦ Moyens de paiement">
+      <Section title={t('parametres.moyensSection')}>
         <Card className="space-y-2.5 p-3">
           <div className="flex flex-wrap gap-1.5">
             {p.moyens.map((m) => (
@@ -343,7 +400,7 @@ export default function Parametres() {
           <div className="flex gap-2">
             <Input
               className="!py-2 !text-sm"
-              placeholder="Ajouter un moyen de paiement"
+              placeholder={t('parametres.ajouterMoyen')}
               value={moyen}
               onChange={(e) => setMoyen(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && ajouterMoyen()}
@@ -359,13 +416,13 @@ export default function Parametres() {
         </Card>
       </Section>
 
-      <Section title="⑧ Cours des devises"
-               action={<span className="text-2xs text-surface-500">1 unité = X XOF</span>}>
+      <Section title={t('parametres.coursSection')}
+               action={<span className="text-2xs text-surface-500">{t('parametres.coursAide', { devise: p.deviseBase })}</span>}>
         <Card className="divide-y divide-surface-200">
           {DEVISES.filter(([c]) => c !== 'XOF').slice(0, 8).map(([code]) => (
             <div key={code} className="flex items-center justify-between gap-3 px-4 py-2.5">
               <span className="text-sm font-semibold text-apex-navy">
-                {code} <span className="font-normal text-surface-500">{nomDevise(code)}</span>
+                {code} <span className="font-normal text-surface-500">{nomDevise(code, p.langue)}</span>
               </span>
               <MoneyInput className="w-32" value={p.cours[code] ?? 0}
                           onChange={(v) => set({ cours: { ...p.cours, [code]: v } })} />

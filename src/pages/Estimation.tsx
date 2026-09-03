@@ -4,7 +4,8 @@ import { useState } from 'react'
 import {
   Btn, Card, Field, Kpi, MoneyInput, Section, Select, Sheet, Vide,
 } from '../components/kit'
-import { MODULES, MOIS_COURT, TYPES, labelModule } from '../data/refs'
+import { MODULES, TYPES } from '../data/refs'
+import { labelModule, labelType, useMois, useT } from '../i18n'
 import { categoriesDe, categoriesPour } from '../lib/referentiel'
 import { db, getParametres, now, stamp, uid } from '../db'
 import { estRealisee, anneeDe } from '../lib/compute'
@@ -25,6 +26,8 @@ const AMORCE: [ModuleId, TypeOp, string][] = [
 ]
 
 export default function Estimation() {
+  const t = useT()
+  const nomsMois = useMois()
   const p = useLiveQuery(() => getParametres(), [])
   const lignes = useLiveQuery(() => db.plan.toArray(), [], [])
   const ecritures = useLiveQuery(() => db.ecritures.toArray(), [], [])
@@ -61,20 +64,20 @@ export default function Estimation() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Kpi label="Revenus prévus" valeur={fmt(p, somme('revenu'), { court: true })} ton="green" />
-        <Kpi label="Dépenses prévues" valeur={fmt(p, somme('depense'), { court: true })} ton="red" />
-        <Kpi label="Épargne prévue" valeur={fmt(p, somme('epargne') + somme('investissement'), { court: true })} ton="teal" />
-        <Kpi label="Solde prévisionnel"
+        <Kpi label={t('estimation.revenusPrevus')} valeur={fmt(p, somme('revenu'), { court: true })} ton="green" />
+        <Kpi label={t('estimation.depensesPrevues')} valeur={fmt(p, somme('depense'), { court: true })} ton="red" />
+        <Kpi label={t('estimation.epargnePrevue')} valeur={fmt(p, somme('epargne') + somme('investissement'), { court: true })} ton="teal" />
+        <Kpi label={t('estimation.soldePrevisionnel')}
              valeur={fmt(p, somme('revenu') - somme('depense') - somme('remboursement'), { court: true })}
              ton="navy" />
       </div>
 
       {mesLignes.length === 0 ? (
         <Vide
-          texte={`Aucune estimation pour ${annee}. Posez d’abord ce que vous prévoyez, mois par mois.`}
+          texte={t('estimation.videTexte', { annee })}
           action={
             <Btn variant="gold" onClick={() => void Promise.all(AMORCE.map((a) => creer(...a)))}>
-              <Wand2 size={16} /> Démarrer avec les postes courants
+              <Wand2 size={16} /> {t('estimation.videAction')}
             </Btn>
           }
         />
@@ -103,7 +106,7 @@ export default function Estimation() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-apex-navy">{l.categorie}</p>
                       <p className="text-2xs text-surface-500">
-                        {labelModule(l.module)} · {TYPES.find((t) => t.id === l.type)?.label}
+                        {labelModule(t, l.module)} · {TYPES.find((t) => t.id === l.type)?.label}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
@@ -125,7 +128,7 @@ export default function Estimation() {
                     <div className="border-t border-surface-200 bg-surface-50 p-3">
                       <div className="mb-3 flex items-center gap-2">
                         <span className="text-2xs font-semibold text-surface-500">
-                          Même montant tous les mois :
+                          {t('estimation.repartirSurAnnee')} :
                         </span>
                         <MoneyInput className="w-28 !py-1.5 text-xs" value={l.mois[0] || 0}
                                     onChange={(v) => remplirTout(l, v)} />
@@ -135,7 +138,7 @@ export default function Estimation() {
                         </button>
                       </div>
                       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                        {MOIS_COURT.map((m, i) => (
+                        {nomsMois.court.map((m, i) => (
                           <label key={m} className="block">
                             <span className="mb-0.5 block text-2xs font-semibold text-surface-500">{m}</span>
                             <MoneyInput className="!px-2 !py-1.5 text-xs" value={l.mois[i] || 0}
@@ -158,24 +161,24 @@ export default function Estimation() {
                     onClick={() => {
                       if (ajout?.categorie) void creer(ajout.module, ajout.type, ajout.categorie)
                       setAjout(null)
-                    }}>Ajouter</Btn>
+                    }}>{t('commun.ajouter')}</Btn>
              }>
         {ajout && (
           <>
-            <Field label="Module">
+            <Field label={t('commun.module')}>
               <Select value={ajout.module}
                       onChange={(e) => setAjout({ ...ajout, module: e.target.value as ModuleId, categorie: '' })}>
                 {MODULES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
               </Select>
             </Field>
-            <Field label="Type">
+            <Field label={t('estimation.type')}>
               <Select value={ajout.type}
                       onChange={(e) => setAjout({ ...ajout, type: e.target.value as TypeOp, categorie: '' })}>
                 {TYPES.filter((t) => t.id !== 'transfert')
                   .map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
               </Select>
             </Field>
-            <Field label="Catégorie">
+            <Field label={t('commun.categorie')}>
               <Select value={ajout.categorie}
                       onChange={(e) => setAjout({ ...ajout, categorie: e.target.value })}>
                 <option value="">— choisir —</option>

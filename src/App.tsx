@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { Home, NotebookPen, PieChart, Settings, Table2 } from 'lucide-react'
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { lienDeConnexionRecu, useUtilisateur } from './lib/auth'
+import { useT } from './i18n'
 import { definirUtilisateurSync, pousserTout, tirerTout } from './lib/sync'
 import { getParametres } from './db'
 import { APP_BRAND, APP_NAME } from './data/refs'
@@ -15,17 +16,18 @@ import Plus from './pages/Plus'
 import TableauBord from './pages/TableauBord'
 
 const ONGLETS = [
-  { to: '/', icon: Home, label: 'Accueil' },
-  { to: '/estimation', icon: Table2, label: 'Estimation' },
-  { to: '/journal', icon: NotebookPen, label: 'Journal' },
-  { to: '/tableau-de-bord', icon: PieChart, label: 'Tableau' },
-  { to: '/plus', icon: Settings, label: 'Plus' },
-]
+  { to: '/', icon: Home, cle: 'nav.accueil' },
+  { to: '/estimation', icon: Table2, cle: 'nav.estimation' },
+  { to: '/journal', icon: NotebookPen, cle: 'nav.journal' },
+  { to: '/tableau-de-bord', icon: PieChart, cle: 'nav.tableau' },
+  { to: '/plus', icon: Settings, cle: 'nav.plus' },
+] as const
 
 export default function App() {
   const p = useLiveQuery(() => getParametres(), [])
   const utilisateur = useUtilisateur()
   const nav = useNavigate()
+  const t = useT()
 
   // Retour depuis le lien de connexion reçu par email : la page « Plus »
   // porte le formulaire qui termine l'opération.
@@ -61,7 +63,7 @@ export default function App() {
           </div>
           {p && (
             <p className="text-right text-2xs text-white/70">
-              {p.raisonSociale || 'Mon budget'}
+              {p.raisonSociale || t('rapport.monBudget')}
               <br />
               <span className="text-white/50">{p.deviseBase} · {p.anneeTravail}</span>
             </p>
@@ -85,7 +87,7 @@ export default function App() {
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-200 bg-white/95
                       pb-[env(safe-area-inset-bottom)] backdrop-blur">
         <div className="mx-auto flex max-w-3xl">
-          {ONGLETS.map(({ to, icon: Icon, label }) => (
+          {ONGLETS.map(({ to, icon: Icon, cle }) => (
             <NavLink
               key={to}
               to={to}
@@ -97,7 +99,7 @@ export default function App() {
               }
             >
               <Icon size={20} strokeWidth={2.2} />
-              {label}
+              {t(cle)}
             </NavLink>
           ))}
         </div>

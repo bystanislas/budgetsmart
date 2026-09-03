@@ -9,9 +9,12 @@
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import {
-  APP_BRAND, APP_CONTACT, APP_NAME, APP_SIGNATURE, CAT_DIME, MOIS,
-  labelModule, labelType, sensDe,
+  APP_BRAND, APP_CONTACT, APP_NAME, APP_SIGNATURE, CAT_DIME, sensDe,
 } from '../data/refs'
+import {
+  dictionnaire, labelFrequence, labelModule, labelType, traducteurPour,
+} from '../i18n'
+import { estLangue, LANGUE_DEFAUT, type Langue } from '../i18n/langues'
 import { db, getParametres } from '../db'
 import {
   agregerAnnee, calculerDime, creances, detailEpargne, empruntsEnCours, estRealisee,
@@ -228,7 +231,16 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
     db.recurrents.toArray(),
   ])
 
-  const b = bornes(periode)
+  // Le classeur parle la langue choisie dans les paramètres, comme le reste
+  // de l'application : en-têtes, onglets, libellés et noms de mois.
+  const langue: Langue = estLangue(p.langue) ? p.langue : LANGUE_DEFAUT
+  const t = traducteurPour(langue)
+  const MOIS = dictionnaire(langue).mois.long
+  const nomModule = (m: Parameters<typeof labelModule>[1]) => labelModule(t, m)
+  const nomType = (x: Parameters<typeof labelType>[1]) => labelType(t, x)
+  const TOTAL = t('rapport.totalMaj')
+
+  const b = bornes(periode, langue)
   const annee = periode.annee
   const ecritures = toutes.filter((e) => e.date >= b.debut && e.date <= b.fin)
   const nomCompte = (id?: string) => comptes.find((c) => c.id === id)?.nom ?? ''
@@ -242,8 +254,13 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
 
   const devise = `${p.deviseBase} (${symboleDevise(p.deviseBase)})`
   const entete = `${APP_NAME} ${APP_BRAND}`
-  const contexte = `${p.raisonSociale || 'Mon budget'} · ${b.libelle} · `
-    + `du ${jour(b.debut)} au ${jour(b.fin)} · montants en ${devise}`
+  const contexte = t('rapport.contexte', {
+    nom: p.raisonSociale || t('rapport.monBudget'),
+    periode: b.libelle,
+    debut: jour(b.debut),
+    fin: jour(b.fin),
+    devise,
+  })
 
   const entree = (e: Ecriture) => estRealisee(e) && sensDe(e.type) === 'entree'
   const sortie = (e: Ecriture) => estRealisee(e) && sensDe(e.type) === 'sortie'
@@ -255,36 +272,36 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
   const totalEpargne = somme((e) => estRealisee(e) && e.type === 'epargne')
 
   /* 1. Synthèse -------------------------------------------------------- */
-  const ws = wb.addWorksheet('Synthèse', { properties: { tabColor: { argb: NAVY } } })
+  const ws = wb.addWorksheet(t('rapport.synthese'), { properties: { tabColor: { argb: NAVY } } })
   const mensuel = agregerAnnee(p, toutes, plan, annee).filter(
     (m) => moisCouverts(periode).includes(m.mois),
   )
   const colsSynth: Colonne[] = [
-    { entete: 'Mois', largeur: 14 },
-    { entete: 'Entrées', largeur: 15, format: 'montant' },
-    { entete: 'dont revenus', largeur: 15, format: 'montant' },
-    { entete: 'dont emprunts', largeur: 15, format: 'montant' },
-    { entete: 'Dépenses', largeur: 15, format: 'montant' },
-    { entete: 'Épargne', largeur: 14, format: 'montant' },
-    { entete: 'Investissement', largeur: 15, format: 'montant' },
-    { entete: 'Remboursements', largeur: 15, format: 'montant' },
-    { entete: 'Prêts accordés', largeur: 15, format: 'montant' },
-    { entete: 'Total sorties', largeur: 15, format: 'montant' },
-    { entete: 'Solde', largeur: 15, format: 'montant' },
-    { entete: 'Trésorerie cumulée', largeur: 17, format: 'montant' },
-    { entete: 'Budget prévu', largeur: 15, format: 'montant' },
-    { entete: 'Écart', largeur: 14, format: 'montant' },
-    { entete: 'Taux d’épargne', largeur: 14, format: 'pourcent' },
+    { entete: t('rapport.colMois'), largeur: 14 },
+    { entete: t('rapport.entrees'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.dontRevenus'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.dontEmprunts'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.colDepenses'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.colEpargne'), largeur: 14, format: 'montant' },
+    { entete: t('rapport.investissement'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.remboursements'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.pretsAccordes'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.totalSorties'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.colSolde'), largeur: 15, format: 'montant' },
+    { entete: t('rapport.tresorerieCumulee'), largeur: 17, format: 'montant' },
+    { entete: t('rapport.budgetPrevu'), largeur: 15, format: 'montant' },
+    { entete: t('estimation.ecart'), largeur: 14, format: 'montant' },
+    { entete: t('rapport.colTauxEpargne'), largeur: 14, format: 'pourcent' },
   ]
   tableau(ws, entete, contexte, colsSynth, [], undefined)
 
   // Les indicateurs prennent la place des lignes 5-6 : on redessine par-dessus.
   ws.spliceRows(5, 0, [], [], [])
   indicateurs(ws, 5, [
-    { label: 'Entrées', valeur: totalEntrees, couleur: GREEN },
-    { label: 'Sorties', valeur: totalSorties, couleur: RED },
-    { label: 'Solde', valeur: totalEntrees - totalSorties, couleur: NAVY },
-    { label: 'Mis de côté', valeur: totalEpargne, couleur: STEEL },
+    { label: t('rapport.entrees'), valeur: totalEntrees, couleur: GREEN },
+    { label: t('rapport.sorties'), valeur: totalSorties, couleur: RED },
+    { label: t('rapport.colSolde'), valeur: totalEntrees - totalSorties, couleur: NAVY },
+    { label: t('tableau.misDeCote'), valeur: totalEpargne, couleur: STEEL },
   ])
 
   const lignesSynth: Cellule[][] = mensuel.map((m) => [
@@ -329,7 +346,7 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
   totalRow.height = 20
   colsSynth.forEach((c, i) => {
     const cell = totalRow.getCell(i + 1)
-    cell.value = i === 0 ? 'TOTAL PÉRIODE'
+    cell.value = i === 0 ? t('rapport.totalPeriode')
       : i === 11 ? (mensuel.length ? mensuel[mensuel.length - 1].cumul : p.tresorerieInitiale)
         : i === 14 ? null : cumule(i)
     cell.font = police(10, true, BLANC)
@@ -346,31 +363,31 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
 
   /* 2. Journal --------------------------------------------------------- */
   tableau(
-    wb.addWorksheet('Journal'),
-    'Journal des opérations', contexte,
+    wb.addWorksheet(t('rapport.ongletJournal')),
+    t('rapport.journalOperations'), contexte,
     [
-      { entete: 'Date', largeur: 12, format: 'date' },
-      { entete: 'Module', largeur: 16 },
-      { entete: 'Type', largeur: 20 },
-      { entete: 'Catégorie', largeur: 26 },
-      { entete: 'Sous-catégorie', largeur: 20 },
-      { entete: 'Descriptif — à quoi ça a servi', largeur: 38 },
-      { entete: 'Tiers', largeur: 18 },
-      { entete: 'Entrée', largeur: 14, format: 'montant' },
-      { entete: 'Sortie', largeur: 14, format: 'montant' },
-      { entete: 'Devise saisie', largeur: 11 },
-      { entete: 'Montant saisi', largeur: 13, format: 'nombre' },
-      { entete: 'Compte', largeur: 18 },
-      { entete: 'Compte destination', largeur: 18 },
-      { entete: 'Moyen', largeur: 16 },
-      { entete: 'Nature', largeur: 13 },
-      { entete: 'Statut', largeur: 11 },
+      { entete: t('rapport.colDate'), largeur: 12, format: 'date' },
+      { entete: t('rapport.colModule'), largeur: 16 },
+      { entete: t('rapport.colType'), largeur: 20 },
+      { entete: t('rapport.colCategorie'), largeur: 26 },
+      { entete: t('rapport.colSousCategorie'), largeur: 20 },
+      { entete: t('rapport.colDescriptifLong'), largeur: 38 },
+      { entete: t('rapport.colTiers'), largeur: 18 },
+      { entete: t('rapport.sensEntree'), largeur: 14, format: 'montant' },
+      { entete: t('rapport.sensSortie'), largeur: 14, format: 'montant' },
+      { entete: t('rapport.deviseSaisie'), largeur: 11 },
+      { entete: t('rapport.montantSaisi'), largeur: 13, format: 'nombre' },
+      { entete: t('rapport.colCompte'), largeur: 18 },
+      { entete: t('rapport.colCompteDestination'), largeur: 18 },
+      { entete: t('rapport.colMoyen'), largeur: 16 },
+      { entete: t('rapport.colNature'), largeur: 13 },
+      { entete: t('rapport.colStatut'), largeur: 11 },
     ],
     ecritures.map((e) => {
       const sens = sensDe(e.type)
       const reel = estRealisee(e)
       return [
-        new Date(e.date), labelModule(e.module), labelType(e.type), e.categorie,
+        new Date(e.date), nomModule(e.module), nomType(e.type), e.categorie,
         e.sousCategorie ?? '', e.descriptif ?? e.note ?? '', e.tiers ?? '',
         reel && sens === 'entree' ? e.montantBase : null,
         reel && sens === 'sortie' ? e.montantBase : null,
@@ -379,7 +396,7 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
         e.moyen ?? '', e.nature ?? '', e.statut,
       ]
     }),
-    ['TOTAL', '', '', '', '', '', '', totalEntrees, totalSorties],
+    [TOTAL, '', '', '', '', '', '', totalEntrees, totalSorties],
   )
 
   /* 3. Dépenses par catégorie et sous-catégorie ------------------------- */
@@ -396,21 +413,21 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
   const lignesDetail = [...detail.values()].sort((a, b2) => b2.montant - a.montant)
   const totalDetail = lignesDetail.reduce((s, l) => s + l.montant, 0)
   tableau(
-    wb.addWorksheet('Par catégorie'),
-    'Où part l’argent', contexte,
+    wb.addWorksheet(t('rapport.ongletCategories')),
+    t('rapport.ouPartArgent'), contexte,
     [
-      { entete: 'Catégorie', largeur: 30 },
-      { entete: 'Sous-catégorie', largeur: 24 },
-      { entete: 'Montant', largeur: 16, format: 'montant' },
-      { entete: 'Part', largeur: 11, format: 'pourcent' },
-      { entete: 'Opérations', largeur: 11, format: 'nombre' },
-      { entete: 'Moyenne', largeur: 15, format: 'montant' },
+      { entete: t('rapport.colCategorie'), largeur: 30 },
+      { entete: t('rapport.colSousCategorie'), largeur: 24 },
+      { entete: t('rapport.colMontant'), largeur: 16, format: 'montant' },
+      { entete: t('rapport.colPart'), largeur: 11, format: 'pourcent' },
+      { entete: t('rapport.nbOperations'), largeur: 11, format: 'nombre' },
+      { entete: t('rapport.moyenne'), largeur: 15, format: 'montant' },
     ],
     lignesDetail.map((l) => [
       l.cat, l.sous, l.montant, totalDetail ? l.montant / totalDetail : 0,
       l.nb, Math.round(l.montant / l.nb),
     ]),
-    ['TOTAL', '', totalDetail, totalDetail ? 1 : 0,
+    [TOTAL, '', totalDetail, totalDetail ? 1 : 0,
       lignesDetail.reduce((s, l) => s + l.nb, 0), null],
   )
 
@@ -418,21 +435,21 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
   const epargnes = detailEpargne(comptes, ecritures)
   if (epargnes.length) {
     tableau(
-      wb.addWorksheet('Épargne'),
-      'Mon épargne — où dort l’argent', contexte,
+      wb.addWorksheet(t('rapport.ongletEpargne')),
+      t('rapport.monEpargne'), contexte,
       [
-        { entete: 'Compte', largeur: 24 },
-        { entete: 'Type', largeur: 18 },
-        { entete: 'Établissement', largeur: 24 },
-        { entete: 'Versé sur la période', largeur: 18, format: 'montant' },
-        { entete: 'Retiré', largeur: 15, format: 'montant' },
-        { entete: 'Solde', largeur: 16, format: 'montant' },
-        { entete: 'Bloqué jusqu’au', largeur: 15 },
+        { entete: t('rapport.colCompte'), largeur: 24 },
+        { entete: t('rapport.typeCompte'), largeur: 18 },
+        { entete: t('rapport.etablissement'), largeur: 24 },
+        { entete: t('rapport.versePeriode'), largeur: 18, format: 'montant' },
+        { entete: t('rapport.retire'), largeur: 15, format: 'montant' },
+        { entete: t('rapport.colSolde'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.bloqueJusquau'), largeur: 15 },
       ],
       epargnes.map((l) => [
         l.compte, l.nature, l.etablissement, l.verse, l.retire, l.solde, jour(l.blocageJusqu),
       ]),
-      ['TOTAL', '', '',
+      [TOTAL, '', '',
         epargnes.reduce((s, l) => s + l.verse, 0),
         epargnes.reduce((s, l) => s + l.retire, 0),
         epargnes.reduce((s, l) => s + l.solde, 0), ''],
@@ -443,23 +460,23 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
   const aRecevoir = creances(toutes)
   const aRendre = empruntsEnCours(toutes)
   if (aRecevoir.length || aRendre.length) {
-    const wsPret = wb.addWorksheet('Prêts & emprunts')
+    const wsPret = wb.addWorksheet(t('rapport.ongletPrets'))
     tableau(
-      wsPret, 'Prêts accordés et emprunts reçus',
-      `${contexte} — encours calculé sur tout l’historique`,
+      wsPret, t('rapport.pretsEmprunts'),
+      `${contexte} — ${t('rapport.encoursHistorique')}`,
       [
-        { entete: 'Sens', largeur: 20 },
-        { entete: 'Tiers', largeur: 26 },
-        { entete: 'Montant engagé', largeur: 17, format: 'montant' },
-        { entete: 'Déjà réglé', largeur: 16, format: 'montant' },
-        { entete: 'Reste', largeur: 16, format: 'montant' },
-        { entete: 'Dernière opération', largeur: 17 },
+        { entete: t('rapport.colSens'), largeur: 20 },
+        { entete: t('rapport.colTiers'), largeur: 26 },
+        { entete: t('rapport.montantEngage'), largeur: 17, format: 'montant' },
+        { entete: t('rapport.dejaRegle'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colReste'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colDerniereOperation'), largeur: 17 },
       ],
       [
-        ...aRecevoir.map((c) => ['Ils me doivent', c.tiers, c.avance, c.regle, c.solde, jour(c.dernier)]),
-        ...aRendre.map((d) => ['Je dois', d.tiers, d.avance, d.regle, d.solde, jour(d.dernier)]),
+        ...aRecevoir.map((c) => [t('rapport.ilsMeDoivent'), c.tiers, c.avance, c.regle, c.solde, jour(c.dernier)]),
+        ...aRendre.map((d) => [t('rapport.jeDois'), d.tiers, d.avance, d.regle, d.solde, jour(d.dernier)]),
       ] as Cellule[][],
-      ['TOTAL', '',
+      [TOTAL, '',
         aRecevoir.reduce((s, c) => s + c.avance, 0) + aRendre.reduce((s, d) => s + d.avance, 0),
         aRecevoir.reduce((s, c) => s + c.regle, 0) + aRendre.reduce((s, d) => s + d.regle, 0),
         aRecevoir.reduce((s, c) => s + c.solde, 0) - aRendre.reduce((s, d) => s + d.solde, 0),
@@ -471,19 +488,19 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
   if (p.dimeActive) {
     const mois = moisCouverts(periode)
     tableau(
-      wb.addWorksheet('Dîme'), 'Dîme et offrandes', contexte,
+      wb.addWorksheet(t('rapport.ongletDime')), t('rapport.dimeOffrandes'), contexte,
       [
-        { entete: 'Mois', largeur: 16 },
-        { entete: 'Revenus soumis', largeur: 18, format: 'montant' },
-        { entete: 'Dîme due', largeur: 16, format: 'montant' },
-        { entete: 'Déjà versée', largeur: 16, format: 'montant' },
-        { entete: 'Reste à verser', largeur: 16, format: 'montant' },
+        { entete: t('rapport.colMois'), largeur: 16 },
+        { entete: t('rapport.colRevenusSoumis'), largeur: 18, format: 'montant' },
+        { entete: t('rapport.colDimeDue'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colDejaVersee'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colResteAVerser'), largeur: 16, format: 'montant' },
       ],
       mois.map((m) => {
         const d = calculerDime(p, toutes, annee, m)
         return [MOIS[m - 1], d.assiette, d.due, d.versee, d.reste]
       }),
-      ['TOTAL',
+      [TOTAL,
         ...[0, 1, 2, 3].map((k) => mois.reduce((s, m) => {
           const d = calculerDime(p, toutes, annee, m)
           return s + [d.assiette, d.due, d.versee, d.reste][k]
@@ -497,23 +514,23 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
   if (lignesPlan.length) {
     const mois = moisCouverts(periode)
     tableau(
-      wb.addWorksheet('Estimation'),
-      'Estimation annuelle des budgets', contexte,
+      wb.addWorksheet(t('rapport.ongletEstimation')),
+      t('rapport.estimationAnnuelle'), contexte,
       [
-        { entete: 'Module', largeur: 16 },
-        { entete: 'Type', largeur: 16 },
-        { entete: 'Catégorie', largeur: 30 },
+        { entete: t('rapport.colModule'), largeur: 16 },
+        { entete: t('rapport.colType'), largeur: 16 },
+        { entete: t('rapport.colCategorie'), largeur: 30 },
         ...mois.map((m) => ({ entete: MOIS[m - 1], largeur: 13, format: 'montant' as const })),
-        { entete: 'Total période', largeur: 15, format: 'montant' as const },
-        { entete: 'Commentaire', largeur: 26 },
+        { entete: t('rapport.totalPeriodeTitre'), largeur: 15, format: 'montant' as const },
+        { entete: t('rapport.colCommentaire'), largeur: 26 },
       ],
       lignesPlan.map((l) => [
-        labelModule(l.module), labelType(l.type), l.categorie,
+        nomModule(l.module), nomType(l.type), l.categorie,
         ...mois.map((m) => l.mois[m - 1] || null),
         mois.reduce((s, m) => s + (l.mois[m - 1] || 0), 0),
         l.commentaire ?? '',
       ]),
-      ['TOTAL', '', '',
+      [TOTAL, '', '',
         ...mois.map((m) => lignesPlan.reduce((s, l) => s + (l.mois[m - 1] || 0), 0)),
         lignesPlan.reduce((s, l) => s + mois.reduce((a, m) => a + (l.mois[m - 1] || 0), 0), 0),
         ''],
@@ -527,18 +544,18 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
     const retenu = (x: (typeof liste)[number]) =>
       (x.devisRetenu >= 0 ? x.devis[x.devisRetenu] : x.estimation) || 0
     tableau(
-      wb.addWorksheet(labelModule(m).slice(0, 31)),
-      labelModule(m), contexte,
+      wb.addWorksheet(nomModule(m).slice(0, 31)),
+      nomModule(m), contexte,
       [
-        { entete: 'Poste', largeur: 30 },
-        { entete: 'Catégorie', largeur: 26 },
-        { entete: 'Estimation', largeur: 15, format: 'montant' },
-        { entete: 'Budget retenu', largeur: 15, format: 'montant' },
-        { entete: 'Réalisé', largeur: 15, format: 'montant' },
-        { entete: 'Reste à payer', largeur: 15, format: 'montant' },
-        { entete: 'Avancement', largeur: 13, format: 'pourcent' },
-        { entete: 'Prestataire', largeur: 22 },
-        { entete: 'Échéance', largeur: 13 },
+        { entete: t('rapport.colPoste'), largeur: 30 },
+        { entete: t('rapport.colCategorie'), largeur: 26 },
+        { entete: t('rapport.colEstimation'), largeur: 15, format: 'montant' },
+        { entete: t('rapport.colBudgetRetenu'), largeur: 15, format: 'montant' },
+        { entete: t('rapport.colRealise'), largeur: 15, format: 'montant' },
+        { entete: t('rapport.colResteAPayer'), largeur: 15, format: 'montant' },
+        { entete: t('rapport.colAvancement'), largeur: 13, format: 'pourcent' },
+        { entete: t('rapport.colPrestataire'), largeur: 22 },
+        { entete: t('rapport.colEcheance'), largeur: 13 },
       ],
       liste.map((x) => {
         const budget = retenu(x)
@@ -549,7 +566,7 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
           x.prestataire ?? '', jour(x.echeance),
         ]
       }),
-      ['TOTAL', '',
+      [TOTAL, '',
         liste.reduce((s, x) => s + x.estimation, 0),
         liste.reduce((s, x) => s + retenu(x), 0),
         liste.reduce((s, x) => s + totalRattache(toutes, x.id), 0),
@@ -561,20 +578,20 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
   /* 9. Objectifs, crédits, récurrents ------------------------------------ */
   if (objectifs.length) {
     tableau(
-      wb.addWorksheet('Objectifs'), 'Objectifs d’épargne', contexte,
+      wb.addWorksheet(t('rapport.ongletObjectifs')), t('rapport.objectifsEpargne'), contexte,
       [
-        { entete: 'Objectif', largeur: 30 },
-        { entete: 'Module', largeur: 18 },
-        { entete: 'Cible', largeur: 16, format: 'montant' },
-        { entete: 'Constitué', largeur: 16, format: 'montant' },
-        { entete: 'Reste', largeur: 16, format: 'montant' },
-        { entete: 'Avancement', largeur: 13, format: 'pourcent' },
-        { entete: 'Échéance', largeur: 13 },
+        { entete: t('rapport.colObjectif'), largeur: 30 },
+        { entete: t('rapport.colModule'), largeur: 18 },
+        { entete: t('rapport.colCible'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colConstitue'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colReste'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colAvancement'), largeur: 13, format: 'pourcent' },
+        { entete: t('rapport.colEcheance'), largeur: 13 },
       ],
       objectifs.map((o) => {
         const acquis = totalRattache(toutes, o.id)
         return [
-          o.nom, labelModule(o.module), o.cible, acquis,
+          o.nom, nomModule(o.module), o.cible, acquis,
           Math.max(0, o.cible - acquis), o.cible ? acquis / o.cible : 0, jour(o.echeance),
         ]
       }),
@@ -583,17 +600,17 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
 
   if (dettes.length) {
     tableau(
-      wb.addWorksheet('Crédits'), 'Crédits et dettes', contexte,
+      wb.addWorksheet(t('rapport.ongletCredits')), t('rapport.creditsDettes'), contexte,
       [
-        { entete: 'Crédit', largeur: 28 },
-        { entete: 'Organisme', largeur: 22 },
-        { entete: 'Capital', largeur: 16, format: 'montant' },
-        { entete: 'Taux annuel', largeur: 12, format: 'pourcent' },
-        { entete: 'Durée (mois)', largeur: 12, format: 'nombre' },
-        { entete: 'Mensualité', largeur: 15, format: 'montant' },
-        { entete: 'Déjà remboursé', largeur: 16, format: 'montant' },
-        { entete: 'Reste dû', largeur: 16, format: 'montant' },
-        { entete: '1re échéance', largeur: 13 },
+        { entete: t('rapport.colCredit'), largeur: 28 },
+        { entete: t('rapport.colOrganisme'), largeur: 22 },
+        { entete: t('rapport.colCapital'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colTauxAnnuel'), largeur: 12, format: 'pourcent' },
+        { entete: t('rapport.colDureeMois'), largeur: 12, format: 'nombre' },
+        { entete: t('rapport.colMensualite'), largeur: 15, format: 'montant' },
+        { entete: t('rapport.colDejaRembourse'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colResteDu'), largeur: 16, format: 'montant' },
+        { entete: t('rapport.colPremiereEcheance'), largeur: 13 },
       ],
       dettes.map((d) => {
         const paye = totalRattache(toutes, d.id)
@@ -608,71 +625,75 @@ export async function exporterClasseur(periode: Periode): Promise<string> {
 
   if (recurrents.length) {
     tableau(
-      wb.addWorksheet('Récurrents'), 'Opérations récurrentes', contexte,
+      wb.addWorksheet(t('rapport.ongletRecurrents')), t('rapport.operationsRecurrentes'), contexte,
       [
-        { entete: 'Libellé', largeur: 30 },
-        { entete: 'Module', largeur: 18 },
-        { entete: 'Catégorie', largeur: 26 },
-        { entete: 'Montant', largeur: 15, format: 'montant' },
-        { entete: 'Devise', largeur: 10 },
-        { entete: 'Fréquence', largeur: 16 },
-        { entete: 'Prochaine échéance', largeur: 17 },
-        { entete: 'Actif', largeur: 10 },
+        { entete: t('rapport.colLibelle'), largeur: 30 },
+        { entete: t('rapport.colModule'), largeur: 18 },
+        { entete: t('rapport.colCategorie'), largeur: 26 },
+        { entete: t('rapport.colMontant'), largeur: 15, format: 'montant' },
+        { entete: t('rapport.colDevise'), largeur: 10 },
+        { entete: t('rapport.colFrequence'), largeur: 16 },
+        { entete: t('rapport.colProchaineEcheance'), largeur: 17 },
+        { entete: t('rapport.actif'), largeur: 10 },
       ],
       recurrents.map((r) => [
-        r.libelle, labelModule(r.module), r.categorie, r.montant,
-        r.devise || p.deviseBase, r.frequence, jour(r.prochaineEcheance),
-        r.actif ? 'Oui' : 'Non',
+        r.libelle, nomModule(r.module), r.categorie, r.montant,
+        r.devise || p.deviseBase, labelFrequence(t, r.frequence), jour(r.prochaineEcheance),
+        r.actif ? t('rapport.oui') : t('rapport.non'),
       ]),
     )
   }
 
   /* 10. Paramètres ------------------------------------------------------- */
-  fiche(wb.addWorksheet('Paramètres'), entete, contexte, [
+  fiche(wb.addWorksheet(t('rapport.ongletParametres')), entete, contexte, [
     {
-      titre: 'Identité',
+      titre: t('rapport.identite'),
       lignes: [
-        ['Raison sociale / Foyer', p.raisonSociale],
-        ['Responsable', p.responsable],
-        ['Activité', p.activite],
-        ['Adresse', p.adresse],
-        ['Ville', p.ville],
-        ['Pays', p.pays],
-        ['Téléphone', p.telephone],
-        ['E-mail', p.email],
-        ['Site web', p.siteWeb],
-        ['Identifiant fiscal', p.identifiant],
+        [t('rapport.paramRaisonSociale'), p.raisonSociale],
+        [t('rapport.colResponsable'), p.responsable],
+        [t('rapport.paramActivite'), p.activite],
+        [t('rapport.paramAdresse'), p.adresse],
+        [t('rapport.paramVille'), p.ville],
+        [t('rapport.paramPays'), p.pays],
+        [t('rapport.paramTelephone'), p.telephone],
+        [t('rapport.paramEmail'), p.email],
+        [t('rapport.paramSiteWeb'), p.siteWeb],
+        [t('rapport.paramIdentifiantFiscal'), p.identifiant],
       ],
     },
     {
-      titre: 'Exercice & devise',
+      titre: t('rapport.exerciceDevise'),
       lignes: [
-        ['Devise de base', devise],
-        ['Période du rapport', b.libelle],
-        ['Trésorerie initiale', p.tresorerieInitiale, 'montant'],
-        ['Taux d’épargne visé', p.tauxEpargneCible, 'pourcent'],
-        ['Seuil d’alerte budget', p.seuilAlerte, 'pourcent'],
-        ['Périmètre', p.perimetre === 'tout' ? 'Tous les modules'
-          : p.perimetre === 'general' ? 'Général seul' : labelModule(p.perimetre)],
+        [t('rapport.paramDeviseBase'), devise],
+        [t('rapport.paramPeriodeRapport'), b.libelle],
+        [t('rapport.paramTresorerieInitiale'), p.tresorerieInitiale, 'montant'],
+        [t('rapport.paramTauxEpargneVise'), p.tauxEpargneCible, 'pourcent'],
+        [t('rapport.paramSeuilAlerte'), p.seuilAlerte, 'pourcent'],
+        [t('rapport.paramPerimetre'), p.perimetre === 'tout' ? t('rapport.perimetreTousModules')
+          : p.perimetre === 'general' ? t('rapport.perimetreGeneralSeul') : nomModule(p.perimetre)],
       ],
     },
     {
-      titre: 'Dîme',
+      titre: t('rapport.ongletDime'),
       lignes: [
-        ['Dîme activée', p.dimeActive ? 'Oui' : 'Non'],
-        ['Taux appliqué', p.dimeTaux, 'pourcent'],
-        ['Assiette', p.dimeAssiette === 'salaire' ? 'Salaire uniquement'
-          : p.dimeAssiette === 'salaire_primes' ? 'Salaire et primes' : 'Tous les revenus'],
+        [t('rapport.paramDimeActivee'), p.dimeActive ? t('rapport.oui') : t('rapport.non')],
+        [t('rapport.colTauxApplique'), p.dimeTaux, 'pourcent'],
+        [t('rapport.colAssiette'), p.dimeAssiette === 'salaire' ? t('rapport.assietteSalaire')
+          : p.dimeAssiette === 'salaire_primes' ? t('rapport.assietteSalairePrimes')
+            : t('rapport.assietteTousRevenus')],
       ],
     },
     {
-      titre: 'Comptes',
+      titre: t('rapport.ongletComptes'),
       lignes: comptes.map((c) => [
         `${c.nom}${c.etablissement ? ` — ${c.etablissement}` : ''}`,
         soldeCompte(c.id, c.soldeOuverture, toutes), 'montant',
       ] as [string, Cellule, Colonne['format']]),
     },
-    { titre: 'Édition', lignes: [['Contact', APP_CONTACT], ['Marque', APP_SIGNATURE]] },
+    {
+      titre: t('rapport.edition'),
+      lignes: [[t('rapport.contact'), APP_CONTACT], [t('rapport.marque'), APP_SIGNATURE]],
+    },
   ])
 
   const nom = `Budget-Smart-${b.cle}.xlsx`
@@ -726,7 +747,9 @@ export async function exporterSauvegarde(): Promise<string> {
 export async function importerSauvegarde(fichier: File): Promise<void> {
   const brut = JSON.parse(await fichier.text()) as Partial<Sauvegarde>
   if (!brut || !Array.isArray(brut.ecritures)) {
-    throw new Error('Fichier de sauvegarde non reconnu.')
+    const { langue } = await getParametres()
+    const t = traducteurPour(estLangue(langue) ? langue : LANGUE_DEFAUT)
+    throw new Error(t('rapport.sauvegardeIllisible'))
   }
   await db.transaction('rw', db.tables, async () => {
     await Promise.all(db.tables.map((t) => t.clear()))

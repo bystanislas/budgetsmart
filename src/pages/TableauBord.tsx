@@ -10,19 +10,24 @@ import {
   agregerAnnee, alertes, calculerDime, parCategorie, parModule, soldeCompte,
 } from '../lib/compute'
 import { fmt, pct } from '../lib/money'
+import { labelModuleCourt, useMois, useT } from '../i18n'
 
 const TON_ALERTE = {
   ok: 'ok', attention: 'attention', grave: 'grave', neutre: 'neutre',
 } as const
 
 export default function TableauBord() {
+  const t = useT()
+  const nomsMois = useMois()
   const p = useLiveQuery(() => getParametres(), [])
   const ecritures = useLiveQuery(() => db.ecritures.toArray(), [], [])
   const comptes = useLiveQuery(() => db.comptes.toArray(), [], [])
   const plan = useLiveQuery(() => db.plan.toArray(), [], [])
   if (!p) return null
 
+  // L'agrégat porte l'indice du mois ; le nom affiché vient de la langue.
   const annuel = agregerAnnee(p, ecritures, plan)
+    .map((m) => ({ ...m, nom: nomsMois.court[m.mois - 1] }))
   const mois = annuel[p.moisSuivi - 1]
   const dime = calculerDime(p, ecritures, p.anneeTravail, p.moisSuivi)
   const tresorerie = comptes.reduce((s, c) => s + soldeCompte(c.id, c.soldeOuverture, ecritures), 0)
@@ -30,7 +35,7 @@ export default function TableauBord() {
   const totalTop = top.reduce((s, x) => s + x.montant, 0)
   const modules = parModule(ecritures, p.anneeTravail)
   const repartition = MODULES.map((m) => ({
-    nom: m.court, valeur: modules[m.id][p.moisSuivi - 1], couleur: m.couleur,
+    nom: labelModuleCourt(t, m.id), valeur: modules[m.id][p.moisSuivi - 1], couleur: m.couleur,
   })).filter((x) => x.valeur > 0)
 
   const euro = (v: number) => fmt(p, v, { court: true })
@@ -38,7 +43,7 @@ export default function TableauBord() {
   return (
     <div className="space-y-5 animate-fade-in">
       <Card className="flex flex-wrap items-center gap-3 p-3">
-        <span className="text-xs font-semibold text-apex-navy">Période</span>
+        <span className="text-xs font-semibold text-apex-navy">{t('tableau.periode')}</span>
         <Select className="w-36 !py-1.5 text-sm" value={p.moisSuivi}
                 onChange={(e) => void majParametres({ moisSuivi: Number(e.target.value) })}>
           {MOIS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
@@ -53,18 +58,18 @@ export default function TableauBord() {
       </Card>
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        <Kpi label="Revenus du mois" valeur={euro(mois.revenus)} ton="green" />
-        <Kpi label="Dépenses du mois" valeur={euro(mois.depenses)} ton="red"
+        <Kpi label={t('tableau.revenusDuMois')} valeur={euro(mois.revenus)} ton="green" />
+        <Kpi label={t('tableau.depensesDuMois')} valeur={euro(mois.depenses)} ton="red"
              note={mois.prevuDepenses ? `Budget ${euro(mois.prevuDepenses)}` : 'Aucun budget'} />
-        <Kpi label="Mis de côté" valeur={euro(mois.epargne + mois.investissement)} ton="teal" />
-        <Kpi label="Solde du mois" valeur={euro(mois.solde)}
+        <Kpi label={t('tableau.misDeCote')} valeur={euro(mois.epargne + mois.investissement)} ton="teal" />
+        <Kpi label={t('tableau.soldeDuMois')} valeur={euro(mois.solde)}
              ton={mois.solde >= 0 ? 'navy' : 'red'} />
-        <Kpi label="Taux d’épargne" valeur={pct(mois.tauxEpargne)} ton="gold"
+        <Kpi label={t('tableau.tauxEpargne')} valeur={pct(mois.tauxEpargne)} ton="gold"
              note={`Cible ${pct(p.tauxEpargneCible)}`} />
-        <Kpi label="Trésorerie" valeur={euro(tresorerie)} ton="navy" />
+        <Kpi label={t('tableau.tresorerie')} valeur={euro(tresorerie)} ton="navy" />
       </div>
 
-      <Section title="Revenus et dépenses de l’année">
+      <Section title={t('tableau.revenusDepensesAnnee')}>
         <Card className="p-3">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={annuel} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
@@ -75,15 +80,15 @@ export default function TableauBord() {
               <Tooltip formatter={(v: number) => fmt(p, v)}
                        contentStyle={{ borderRadius: 12, fontSize: 12, border: '1px solid #dfe3e9' }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="revenus" name="Revenus" fill="#1E6B3C" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="depenses" name="Dépenses" fill="#8B1A1A" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="epargne" name="Épargne" fill="#10706B" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="revenus" name={t('tableau.revenus')} fill="#1E6B3C" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="depenses" name={t('tableau.depensesDuMois')} fill="#8B1A1A" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="epargne" name={t('tableau.epargne')} fill="#10706B" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
       </Section>
 
-      <Section title="Trésorerie cumulée">
+      <Section title={t('tableau.tresorerieCumulee')}>
         <Card className="p-3">
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={annuel} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
@@ -93,7 +98,7 @@ export default function TableauBord() {
                      tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
               <Tooltip formatter={(v: number) => fmt(p, v)}
                        contentStyle={{ borderRadius: 12, fontSize: 12, border: '1px solid #dfe3e9' }} />
-              <Line type="monotone" dataKey="cumul" name="Cumul" stroke="#2E5480"
+              <Line type="monotone" dataKey="cumul" name={t('tableau.tresorerieCumulee')} stroke="#2E5480"
                     strokeWidth={2.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -101,7 +106,7 @@ export default function TableauBord() {
       </Section>
 
       {repartition.length > 0 && (
-        <Section title="Répartition du mois par module">
+        <Section title={t('tableau.repartitionModule')}>
           <Card className="p-3">
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -119,7 +124,7 @@ export default function TableauBord() {
       )}
 
       {p.dimeActive && (
-        <Section title="Dîme du mois">
+        <Section title={t('tableau.dimeDuMois')}>
           <Card className="divide-y divide-surface-200">
             {[['Revenus soumis', dime.assiette], ['Dîme due', dime.due],
               ['Déjà versée', dime.versee], ['Reste à verser', dime.reste]].map(([l, v], i) => (
@@ -136,7 +141,7 @@ export default function TableauBord() {
       )}
 
       {top.length > 0 && (
-        <Section title="Où part l’argent ce mois-ci">
+        <Section title={t('tableau.ouPartArgent')}>
           <Card className="divide-y divide-surface-200">
             {top.map((c) => (
               <div key={`${c.module}-${c.categorie}`} className="px-4 py-2.5">
@@ -157,14 +162,14 @@ export default function TableauBord() {
         </Section>
       )}
 
-      <Section title="Alertes">
+      <Section title={t('tableau.alertes')}>
         <div className="space-y-2">
           {alertes(p, mois, dime, tresorerie, ecritures.length).map((a, i) => (
             <Card key={i} className="flex items-start gap-2.5 p-3">
               <Puce ton={TON_ALERTE[a.ton]}>
                 {a.ton === 'ok' ? '✓' : a.ton === 'grave' ? '!' : a.ton === 'attention' ? '~' : '·'}
               </Puce>
-              <p className="text-sm text-surface-700">{a.texte}</p>
+              <p className="text-sm text-surface-700">{t(a.cle as never, a.valeurs)}</p>
             </Card>
           ))}
         </div>
