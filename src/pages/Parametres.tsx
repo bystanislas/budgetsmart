@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Btn, Card, Field, Input, Kpi, MoneyInput, Puce, Section, Select } from '../components/kit'
 import EditeurCategories from '../components/EditeurCategories'
@@ -7,10 +7,17 @@ import {
   CAT_DIME, CAT_DON, CAT_OFFRANDE, DEVISES, ETABLISSEMENTS, MOIS, MODULES,
   MOYENS as MOYENS_LIVRES,
 } from '../data/refs'
+import { PAYS, devinerPays, indicatifDe } from '../data/pays'
 import { db, getParametres, majParametres, stamp, uid } from '../db'
 import { soldeCompte } from '../lib/compute'
 import { fmt, nomDevise, symboleDevise } from '../lib/money'
 import type { Compte } from '../types'
+
+/** Sépare l'indicatif du numéro dans le champ téléphone, sans champ séparé à migrer. */
+function decomposerTelephone(telephone: string, pays: string): [string, string] {
+  const m = telephone.match(/^(\+\d{1,4})\s*(.*)$/)
+  return m ? [m[1], m[2]] : [indicatifDe(pays), telephone]
+}
 
 const NATURES_COMPTE = [
   ['courant', 'Compte courant'], ['epargne', 'Épargne'], ['bloque', 'Épargne bloquée'],
@@ -23,9 +30,20 @@ export default function Parametres() {
   const p = useLiveQuery(() => getParametres(), [])
   const comptes = useLiveQuery(() => db.comptes.orderBy('nom').toArray(), [], [])
   const ecritures = useLiveQuery(() => db.ecritures.toArray(), [], [])
+
+  // Devine le pays au premier lancement, depuis le fuseau horaire — sans
+  // réseau ni permission. Ne s'applique que si rien n'a encore été choisi.
+  useEffect(() => {
+    if (p && !p.pays) {
+      const suggestion = devinerPays()
+      if (suggestion) void majParametres({ pays: suggestion })
+    }
+  }, [p?.pays])
+
   if (!p) return null
 
   const set = (patch: Parameters<typeof majParametres>[0]) => void majParametres(patch)
+  const [indicatifTel, numeroTel] = decomposerTelephone(p.telephone, p.pays)
 
   const ajouterMoyen = () => {
     const v = moyen.trim()
@@ -71,7 +89,7 @@ export default function Parametres() {
       <div id="identite" className="scroll-mt-20" />
       <Section title="① Identité & coordonnées">
         <Card className="grid gap-3 p-4 sm:grid-cols-2">
-          <Field label="Raison sociale / Nom">
+          <Field label="Raison sociale / Nom, prénom ou famille">
             <Input value={p.raisonSociale} placeholder="APEX AFRICA"
                    onChange={(e) => set({ raisonSociale: e.target.value })} />
           </Field>
@@ -88,13 +106,31 @@ export default function Parametres() {
             <Input value={p.ville} placeholder="Abidjan"
                    onChange={(e) => set({ ville: e.target.value })} />
           </Field>
-          <Field label="Pays">
-            <Input value={p.pays} placeholder="Côte d’Ivoire"
-                   onChange={(e) => set({ pays: e.target.value })} />
+          <Field label="Pays" hint="Deviné depuis votre fuseau horaire au premier lancement — à corriger si besoin.">
+            <Select value={p.pays} onChange={(e) => set({ pays: e.target.value })}>
+              <option value="">— choisir —</option>
+              {PAYS.map(([code, nom]) => <option key={code} value={nom}>{nom}</option>)}
+            </Select>
           </Field>
           <Field label="Téléphone">
-            <Input value={p.telephone} inputMode="tel" placeholder="+225 …"
-                   onChange={(e) => set({ telephone: e.target.value })} />
+            <div className="flex gap-2">
+              <Select
+                className="!w-24 shrink-0 !px-2"
+                value={indicatifTel}
+                onChange={(e) => set({ telephone: `${e.target.value} ${numeroTel}`.trim() })}
+              >
+                {PAYS.map(([code, , indicatif]) => (
+                  <option key={code} value={indicatif}>{indicatif} · {code}</option>
+                ))}
+              </Select>
+              <Input
+                className="flex-1"
+                value={numeroTel}
+                inputMode="tel"
+                placeholder="07 12 34 56 78"
+                onChange={(e) => set({ telephone: `${indicatifTel} ${e.target.value}`.trim() })}
+              />
+            </div>
           </Field>
           <Field label="Email">
             <Input value={p.email} inputMode="email"
