@@ -62,7 +62,7 @@ export default function Accueil() {
         <div className="h-1 bg-apex-gold" />
       </Card>
 
-      <Section title="Votre parcours — dans cet ordre">
+      <Section title="Votre parcours">
         <div className="space-y-2.5">
           {ETAPES.map((e, i) => {
             const fait = [faits.infos, faits.estimation, faits.journal][i]
@@ -86,7 +86,7 @@ export default function Accueil() {
         </div>
       </Section>
 
-      <Section title="Mes modules — chacun sa page, aucun mélange">
+      <Section title="Mes autres Budgets">
         <div className="grid grid-cols-3 gap-2.5">
           {MODULES_BTN.map((m) => (
             <Card key={m.id} onClick={() => nav(`/module/${m.id}`)}

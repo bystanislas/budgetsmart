@@ -28,7 +28,7 @@ export default function App() {
                          px-4 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] text-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <img src="./budget-icon-192.png" alt="" className="h-8 w-8 rounded-lg" />
+            <img src="./icon-192.png" alt="" className="h-8 w-8 rounded-lg" />
             <div className="leading-tight">
               <p className="text-sm font-bold tracking-tight">{APP_NAME}</p>
               <p className="text-2xs text-white/60">{APP_BRAND}</p>

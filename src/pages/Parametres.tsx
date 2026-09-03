@@ -53,7 +53,7 @@ export default function Parametres() {
       <Card className="overflow-hidden">
         <div className="bg-apex-navy px-3.5 py-2">
           <p className="text-2xs font-bold uppercase tracking-[.14em] text-white">
-            Tout se règle ici
+            Renseignez vos informations
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5 p-3">
