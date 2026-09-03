@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260">
+  <defs>
+    <linearGradient id="or" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F0C75E"/>
+      <stop offset="55%" stop-color="#D9A93C"/>
+      <stop offset="100%" stop-color="#B8860B"/>
+    </linearGradient>
+    <linearGradient id="nuit" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1A3557"/>
+      <stop offset="100%" stop-color="#122845"/>
+    </linearGradient>
+  </defs>
+<rect x="0" y="0" width="260" height="260" rx="58" fill="url(#nuit)"/><rect x="13" y="13" width="234" height="234" rx="47" fill="none" stroke="#D9A93C" stroke-opacity="0.28" stroke-width="2"/><path d="M 44 208 L 44 172 Q 44 164 52 164 L 75 164 Q 83 164 83 172 L 83 208 Z" fill="url(#or)" fill-opacity="0.62"/><path d="M 87 208 L 87 138 Q 87 130 95 130 L 118 130 Q 126 130 126 138 L 126 208 Z" fill="url(#or)" fill-opacity="0.79"/><path d="M 130 208 L 130 104 Q 130 96 138 96 L 161 96 Q 169 96 169 104 L 169 208 Z" fill="url(#or)" fill-opacity="0.93"/><path d="M 173 208 L 173 92 L 192.5 44 L 212 92 L 212 208 Z" fill="url(#or)"/><rect x="40" y="208" width="176" height="7" rx="3.5" fill="#D9A93C" fill-opacity="0.38"/></svg>
