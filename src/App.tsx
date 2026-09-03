@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { Home, NotebookPen, PieChart, Settings, Table2 } from 'lucide-react'
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { lienDeConnexionRecu, useUtilisateur } from './lib/auth'
-import { definirUtilisateurSync, tirerTout } from './lib/sync'
+import { definirUtilisateurSync, pousserTout, tirerTout } from './lib/sync'
 import { getParametres } from './db'
 import { APP_BRAND, APP_NAME } from './data/refs'
 import Accueil from './pages/Accueil'
@@ -33,11 +33,18 @@ export default function App() {
     if (lienDeConnexionRecu()) nav('/plus')
   }, [])
 
-  // Un compte connecté active la sauvegarde en ligne et rapatrie ce qui s'y
-  // trouve déjà — c'est ce qui restaure les données sur un nouvel appareil.
+  // Un compte connecté active la sauvegarde en ligne. On rapatrie d'abord ce
+  // qui existe déjà — c'est ce qui restaure un nouvel appareil — puis on
+  // publie l'état local : sans cette seconde étape, tout ce qui a été saisi
+  // avant la création du compte ne partirait jamais dans le cloud.
   useEffect(() => {
     definirUtilisateurSync(utilisateur?.uid ?? null)
-    if (utilisateur) void tirerTout(utilisateur.uid)
+    if (!utilisateur) return
+    const { uid } = utilisateur
+    void (async () => {
+      await tirerTout(uid)
+      await pousserTout(uid)
+    })()
   }, [utilisateur?.uid])
 
   return (

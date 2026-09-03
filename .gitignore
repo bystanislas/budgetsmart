@@ -11,3 +11,7 @@ android
 ios
 __pycache__
 *.pyc
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

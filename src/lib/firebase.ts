@@ -11,9 +11,10 @@
  * users/{uid}/…) et par Firebase Authentication.
  */
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import { connectAuthEmulator, getAuth } from 'firebase/auth'
 import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  connectFirestoreEmulator, initializeFirestore, persistentLocalCache,
+  persistentMultipleTabManager,
 } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -33,4 +34,16 @@ export const auth = getAuth(app)
 // locale qui reste la source de vérité immédiate de l'application.
 export const firestore = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  // Le modèle comporte beaucoup de champs facultatifs (sous-catégorie,
+  // descriptif, tiers, compte…). Sans ceci, Firestore refuse tout document
+  // dont un champ vaut `undefined` ; ils sont simplement omis, et relus comme
+  // absents — exactement ce que le modèle attend.
+  ignoreUndefinedProperties: true,
 })
+
+// Développement et tests : `VITE_FIREBASE_EMULATEURS=1 npm run build` branche
+// l'application sur les émulateurs locaux, sans jamais toucher au vrai projet.
+if (import.meta.env.VITE_FIREBASE_EMULATEURS === '1') {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  connectFirestoreEmulator(firestore, '127.0.0.1', 8080)
+}
