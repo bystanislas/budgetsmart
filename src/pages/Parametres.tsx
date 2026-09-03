@@ -8,6 +8,7 @@ import {
   MOYENS as MOYENS_LIVRES,
 } from '../data/refs'
 import { PAYS, devinerPays, indicatifDe } from '../data/pays'
+import { useUtilisateur } from '../lib/auth'
 import { db, getParametres, majParametres, stamp, uid } from '../db'
 import { soldeCompte } from '../lib/compute'
 import { fmt, nomDevise, symboleDevise } from '../lib/money'
@@ -27,6 +28,7 @@ const NATURES_COMPTE = [
 
 export default function Parametres() {
   const [moyen, setMoyen] = useState('')
+  const utilisateur = useUtilisateur()
   const p = useLiveQuery(() => getParametres(), [])
   const comptes = useLiveQuery(() => db.comptes.orderBy('nom').toArray(), [], [])
   const ecritures = useLiveQuery(() => db.ecritures.toArray(), [], [])
@@ -44,6 +46,12 @@ export default function Parametres() {
 
   const set = (patch: Parameters<typeof majParametres>[0]) => void majParametres(patch)
   const [indicatifTel, numeroTel] = decomposerTelephone(p.telephone, p.pays)
+
+  // Avec un compte en ligne, ces informations identifient le titulaire du
+  // dossier : on les signale comme attendues, sans bloquer l'usage hors compte.
+  const requis = (label: string) => (utilisateur ? `${label} *` : label)
+  const profilIncomplet = Boolean(utilisateur)
+    && !(p.raisonSociale && p.telephone && p.email && p.adresse)
 
   const ajouterMoyen = () => {
     const v = moyen.trim()
@@ -88,8 +96,14 @@ export default function Parametres() {
 
       <div id="identite" className="scroll-mt-20" />
       <Section title="① Identité & coordonnées">
+        {profilIncomplet && (
+          <Card className="border-apex-gold bg-apex-cream p-3 text-2xs leading-relaxed text-apex-navy">
+            Complétez les champs marqués d'une étoile : ce sont eux qui identifient votre
+            dossier et qui vous permettront de le retrouver depuis un autre appareil.
+          </Card>
+        )}
         <Card className="grid gap-3 p-4 sm:grid-cols-2">
-          <Field label="Raison sociale / Nom, prénom ou famille">
+          <Field label={requis('Raison sociale / Nom, prénom ou famille')}>
             <Input value={p.raisonSociale} placeholder="APEX AFRICA"
                    onChange={(e) => set({ raisonSociale: e.target.value })} />
           </Field>
@@ -99,7 +113,7 @@ export default function Parametres() {
           <Field label="Activité / Fonction">
             <Input value={p.activite} onChange={(e) => set({ activite: e.target.value })} />
           </Field>
-          <Field label="Adresse">
+          <Field label={requis('Adresse')}>
             <Input value={p.adresse} onChange={(e) => set({ adresse: e.target.value })} />
           </Field>
           <Field label="Ville">
@@ -112,7 +126,7 @@ export default function Parametres() {
               {PAYS.map(([code, nom]) => <option key={code} value={nom}>{nom}</option>)}
             </Select>
           </Field>
-          <Field label="Téléphone">
+          <Field label={requis('Téléphone')}>
             <div className="flex gap-2">
               <Select
                 className="!w-24 shrink-0 !px-2"
@@ -132,7 +146,7 @@ export default function Parametres() {
               />
             </div>
           </Field>
-          <Field label="Email">
+          <Field label={requis('Email')}>
             <Input value={p.email} inputMode="email"
                    onChange={(e) => set({ email: e.target.value })} />
           </Field>

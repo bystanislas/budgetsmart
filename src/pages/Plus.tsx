@@ -13,6 +13,7 @@ import {
   APP_BRAND, APP_CONTACT, APP_NAME, APP_SIGNATURE, DEVISES, FREQUENCES, MODULES,
   labelModule,
 } from '../data/refs'
+import CompteCloud from '../components/CompteCloud'
 import { categoriesPour } from '../lib/referentiel'
 import { db, getParametres, now, uid } from '../db'
 import {
@@ -160,6 +161,8 @@ export default function Plus() {
           {message}
         </Card>
       )}
+
+      <CompteCloud annonce={annonce} />
 
       <Section title="Réglages">
         <Card onClick={() => nav('/parametres')} className="flex items-center gap-3 p-3">

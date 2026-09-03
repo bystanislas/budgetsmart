@@ -1,6 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect } from 'react'
 import { Home, NotebookPen, PieChart, Settings, Table2 } from 'lucide-react'
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { lienDeConnexionRecu, useUtilisateur } from './lib/auth'
+import { definirUtilisateurSync, tirerTout } from './lib/sync'
 import { getParametres } from './db'
 import { APP_BRAND, APP_NAME } from './data/refs'
 import Accueil from './pages/Accueil'
@@ -21,6 +24,21 @@ const ONGLETS = [
 
 export default function App() {
   const p = useLiveQuery(() => getParametres(), [])
+  const utilisateur = useUtilisateur()
+  const nav = useNavigate()
+
+  // Retour depuis le lien de connexion reçu par email : la page « Plus »
+  // porte le formulaire qui termine l'opération.
+  useEffect(() => {
+    if (lienDeConnexionRecu()) nav('/plus')
+  }, [])
+
+  // Un compte connecté active la sauvegarde en ligne et rapatrie ce qui s'y
+  // trouve déjà — c'est ce qui restaure les données sur un nouvel appareil.
+  useEffect(() => {
+    definirUtilisateurSync(utilisateur?.uid ?? null)
+    if (utilisateur) void tirerTout(utilisateur.uid)
+  }, [utilisateur?.uid])
 
   return (
     <div className="min-h-[100dvh] bg-surface-100 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
