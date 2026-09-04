@@ -23,6 +23,17 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.6.0',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'nouveau',
+        fr: 'Connexion « Continuer avec Google » : si vous avez une adresse Gmail, un seul geste suffit — plus de lien à attendre, à copier ni à coller.',
+        en: '“Continue with Google” sign-in: if you have a Gmail address, one tap is enough — no more link to wait for, copy or paste.',
+      },
+    ],
+  },
+  {
     version: '1.5.1',
     date: '2026-09-04',
     changements: [

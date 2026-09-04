@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
 import { Bell, Home, NotebookPen, PieChart, Settings, Table2 } from 'lucide-react'
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { lienDeConnexionRecu, useUtilisateur } from './lib/auth'
+import { finaliserRedirection, lienDeConnexionRecu, useUtilisateur } from './lib/auth'
 import { useT } from './i18n'
 import { useNouveautes } from './lib/nouveautes'
 import { definirUtilisateurSync, pousserTout, tirerTout } from './lib/sync'
@@ -38,6 +38,9 @@ export default function App() {
   // porte le formulaire qui termine l'opération.
   useEffect(() => {
     if (lienDeConnexionRecu()) nav('/plus')
+    // Retour d'une connexion Google par redirection : Firebase a besoin qu'on
+    // relise le résultat au chargement pour que la session soit établie.
+    void finaliserRedirection()
   }, [])
 
   // Un compte connecté active la sauvegarde en ligne. On rapatrie d'abord ce

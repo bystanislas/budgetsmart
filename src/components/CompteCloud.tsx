@@ -3,9 +3,9 @@ import { CloudOff, LogOut, Mail, RefreshCw, Smartphone, UserCheck } from 'lucide
 import type { ConfirmationResult } from 'firebase/auth'
 import { Btn, Card, Field, Input, Puce, Section } from './kit'
 import {
-  causeEchecLien, emailMemorise, envoyerCodeSms, envoyerLienConnexion,
-  estAppInstallee, lienDeConnexionRecu, saisieEstUnLien, seDeconnecter,
-  terminerConnexionParEmail, useUtilisateur,
+  causeEchecLien, connexionGoogle, emailMemorise, envoyerCodeSms,
+  envoyerLienConnexion, estAppInstallee, googleIndisponible, lienDeConnexionRecu,
+  saisieEstUnLien, seDeconnecter, terminerConnexionParEmail, useUtilisateur,
 } from '../lib/auth'
 import { pousserTout, tirerTout } from '../lib/sync'
 import { useT } from '../i18n'
@@ -65,6 +65,20 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
     reseau: 'compte.reseauIndisponible',
     autre: 'compte.connexionEchouee',
   } as const
+
+  const seConnecterAvecGoogle = async () => {
+    setOccupe(true)
+    try {
+      const utilisateur = await connexionGoogle()
+      // Sans utilisateur, la page part vers Google : ne rien annoncer ici.
+      if (utilisateur) annonce(t('compte.connexionReussie'))
+    } catch (erreur) {
+      annonce(t(googleIndisponible(erreur)
+        ? 'compte.googleIndisponible' : 'compte.googleEchouee'))
+    } finally {
+      setOccupe(false)
+    }
+  }
 
   const terminerAvecLienColle = async () => {
     if (!saisieEstUnLien(lienColle)) { annonce(t('compte.lienIllisible')); return }
@@ -150,6 +164,36 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
         <p className="rounded-xl bg-apex-cream p-3 text-2xs leading-relaxed text-apex-navy">
           {t('compte.argumentaire')}
         </p>
+
+        {/* Chemin le plus court pour la majorité : une adresse Gmail suffit. */}
+        <div>
+          <button
+            onClick={() => void seConnecterAvecGoogle()}
+            disabled={occupe}
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl border
+                       border-surface-300 bg-white px-4 py-2.5 text-sm font-bold
+                       text-apex-navy transition active:bg-surface-100 disabled:opacity-50"
+          >
+            <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
+              <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.1z" />
+              <path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.6-3.9-12.4-9.1H4.3v5.7C7.9 41 15.4 46 24 46z" />
+              <path fill="#FBBC05" d="M11.6 28.1c-.4-1.3-.7-2.7-.7-4.1s.3-2.8.7-4.1V14.2H4.3A22 22 0 0 0 2 24c0 3.5.8 6.9 2.3 9.8l7.3-5.7z" />
+              <path fill="#EA4335" d="M24 10.8c3.3 0 6.2 1.1 8.500 3.3l6.3-6.3C34.9 4.2 30 2 24 2 15.4 2 7.9 7 4.3 14.2l7.3 5.7c1.8-5.2 6.6-9.1 12.4-9.1z" />
+            </svg>
+            {t('compte.avecGoogle')}
+          </button>
+          <p className="mt-1.5 px-1 text-2xs leading-relaxed text-surface-500">
+            {t('compte.avecGoogleAide')}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-surface-200" />
+          <span className="text-2xs font-semibold uppercase tracking-wider text-surface-400">
+            {t('compte.ouBien')}
+          </span>
+          <span className="h-px flex-1 bg-surface-200" />
+        </div>
 
         {confirmationEmail ? (
           <Field label={t('compte.confirmezEmail')} hint={t('compte.confirmezEmailAide')}>
