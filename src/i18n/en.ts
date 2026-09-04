@@ -303,7 +303,7 @@ export const en: Dictionnaire = {
     troisCategories: 'Three separate categories, three uses',
     dimeExplication: 'Only the {dime} counts against the tithe owed — that is what the calculation follows. The {offrande} and the {don} are ordinary expenses, tracked separately in the summaries.',
     ajouterMoyen: 'Add a payment method',
-    coursAide: '1 unit = X {devise}',
+    coursAide: '1 unit = how many {devise}',
     natureCourant: 'Current account',
     natureEpargne: 'Savings',
     natureBloque: 'Locked savings',

@@ -51,6 +51,14 @@ export default function Parametres() {
   if (!p) return null
 
   const listePays = paysLocalises(p.langue)
+
+  // Les cours sont conservés dans une référence unique (le franc CFA) pour que
+  // changer de devise de base ne réécrive jamais la table. On les affiche
+  // toutefois dans la devise choisie, seule lecture qui ait un sens pour
+  // l'utilisateur : « 1 EUR = tant de ma devise ».
+  const pivot = p.cours[p.deviseBase] || 1
+  const arrondi = (v: number) => Math.round(v * 1e6) / 1e6
+  const coursAffiche = (code: string) => arrondi((p.cours[code] ?? 0) / pivot)
   const set = (patch: Parameters<typeof majParametres>[0]) => void majParametres(patch)
   const [indicatifTel, numeroTel] = decomposerTelephone(p.telephone, p.pays)
 
@@ -418,14 +426,14 @@ export default function Parametres() {
 
       <Section title={t('parametres.coursSection')}
                action={<span className="text-2xs text-surface-500">{t('parametres.coursAide', { devise: p.deviseBase })}</span>}>
-        <Card className="divide-y divide-surface-200">
-          {DEVISES.filter(([c]) => c !== 'XOF').slice(0, 8).map(([code]) => (
+        <Card className="max-h-96 divide-y divide-surface-200 overflow-y-auto">
+          {DEVISES.filter(([c]) => c !== p.deviseBase).map(([code]) => (
             <div key={code} className="flex items-center justify-between gap-3 px-4 py-2.5">
               <span className="text-sm font-semibold text-apex-navy">
                 {code} <span className="font-normal text-surface-500">{nomDevise(code, p.langue)}</span>
               </span>
-              <MoneyInput className="w-32" value={p.cours[code] ?? 0}
-                          onChange={(v) => set({ cours: { ...p.cours, [code]: v } })} />
+              <MoneyInput className="w-32" value={coursAffiche(code)}
+                          onChange={(v) => set({ cours: { ...p.cours, [code]: v * pivot } })} />
             </div>
           ))}
         </Card>

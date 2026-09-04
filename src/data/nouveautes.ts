@@ -23,6 +23,27 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.6.1',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Le cours des devises ne se laissait pas saisir : la virgule était effacée à l’instant où on la tapait, et « 655,957 » devenait 655957. Les décimales fonctionnent enfin, au point comme à la virgule — dans tous les champs de montant de l’application.',
+        en: 'Exchange rates could not be typed: the decimal separator was erased the moment you typed it, turning “655.957” into 655957. Decimals now work, with a dot or a comma — in every amount field in the app.',
+      },
+      {
+        genre: 'correction',
+        fr: 'Les 24 devises sont désormais toutes modifiables ; seules 8 l’étaient, et la liste ignorait votre devise de base.',
+        en: 'All 24 currencies can now be edited; only 8 could be, and the list ignored your base currency.',
+      },
+      {
+        genre: 'amelioration',
+        fr: 'Chaque cours est affiché dans votre devise de base : « 1 EUR = tant ». Changer de devise de base réexprime les taux sans jamais abîmer la table.',
+        en: 'Each rate is shown in your base currency: “1 EUR = so much”. Changing your base currency re-expresses the rates without ever damaging the table.',
+      },
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-09-04',
     changements: [

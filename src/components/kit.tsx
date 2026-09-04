@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { X } from 'lucide-react'
 import { createPortal } from 'react-dom'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 /* ---------------------------------------------------------------- cartes */
 export function Card({ className, children, onClick }: {
@@ -91,18 +91,45 @@ export function TextArea(p: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
 }
 
 /** Saisie de montant : clavier numérique sur mobile, séparateurs tolérés. */
+/**
+ * Saisie d'un montant ou d'un taux.
+ *
+ * Le champ garde son propre texte plutôt que de se réafficher depuis le
+ * nombre : « 655. » ou « 0, » sont des étapes de frappe légitimes qu'un
+ * nombre ne sait pas représenter. Sans cela le séparateur décimal était
+ * effacé à l'instant même où on le tapait, et « 655,957 » devenait 655957.
+ */
+const nombreDepuisTexte = (texte: string): number => {
+  const n = Number(texte.replace(',', '.'))
+  return Number.isFinite(n) ? n : 0
+}
+
 export function MoneyInput({ value, onChange, ...rest }: {
   value: number; onChange: (v: number) => void
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  const afficher = (v: number) => (v === 0 ? '' : String(v))
+  const [texte, setTexte] = useState(() => afficher(value))
+
+  // Le champ se resynchronise si la valeur change ailleurs (chargement des
+  // paramètres, restauration d'une sauvegarde), jamais pendant la frappe.
+  useEffect(() => {
+    if (nombreDepuisTexte(texte) !== value) setTexte(afficher(value))
+  }, [value])
+
   return (
     <input
       {...rest}
       inputMode="decimal"
-      value={value === 0 ? '' : String(value)}
+      value={texte}
       placeholder="0"
       onChange={(e) => {
-        const n = Number(e.target.value.replace(/[^\d.,-]/g, '').replace(',', '.'))
-        onChange(Number.isFinite(n) ? n : 0)
+        // Un seul séparateur décimal, un signe moins en tête au plus.
+        const propre = e.target.value
+          .replace(/[^\d.,-]/g, '')
+          .replace(/(?!^)-/g, '')
+          .replace(/([.,])(?=.*[.,])/g, '')
+        setTexte(propre)
+        onChange(nombreDepuisTexte(propre))
       }}
       className={clsx(base, 'text-right font-semibold tabular-nums', rest.className)}
     />

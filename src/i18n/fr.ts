@@ -306,7 +306,7 @@ export const fr = {
     troisCategories: 'Trois catégories distinctes, trois usages',
     dimeExplication: 'Seule la {dime} vient en déduction de la dîme due — c’est elle que le calcul suit. L’{offrande} et le {don} sont des dépenses à part entière, suivies séparément dans les récapitulatifs.',
     ajouterMoyen: 'Ajouter un moyen de paiement',
-    coursAide: '1 unité = X {devise}',
+    coursAide: '1 unité = combien de {devise}',
     natureCourant: 'Compte courant',
     natureEpargne: 'Épargne',
     natureBloque: 'Épargne bloquée',
