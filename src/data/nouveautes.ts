@@ -23,6 +23,17 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.9.2',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Dans la fiche complète, le champ Montant était écrasé par le sélecteur de devise, au point de ne plus laisser la place à un seul chiffre. Les largeurs demandées sont désormais respectées partout : montant, devise, sélecteurs de mois et d’année du tableau de bord.',
+        en: 'In the full entry sheet, the Amount field was crushed by the currency selector, leaving no room for a single digit. Requested widths are now respected everywhere: amount, currency, and the overview’s month and year selectors.',
+      },
+    ],
+  },
+  {
     version: '1.9.1',
     date: '2026-09-04',
     changements: [

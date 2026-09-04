@@ -74,20 +74,30 @@ export function Field({ label, hint, children }: {
   )
 }
 
-const base =
-  'w-full rounded-xl border border-surface-300 bg-white px-3 py-2.5 text-sm outline-none ' +
+const CHAMP =
+  'rounded-xl border border-surface-300 bg-white px-3 py-2.5 text-sm outline-none ' +
   'transition focus:border-apex-gold focus:ring-2 focus:ring-apex-gold/25 disabled:bg-surface-100'
 
+/**
+ * Tailwind tranche les conflits par l'ordre de la feuille de style, jamais par
+ * l'ordre où les classes sont écrites : une largeur passée par l'appelant
+ * (`w-28`, `flex-1`) perdait silencieusement contre le `w-full` du champ, qui
+ * s'étirait alors et écrasait ses voisins. On ne pose donc « pleine largeur »
+ * que si l'appelant n'a pas déjà dit quelle largeur il veut.
+ */
+const base = (perso?: string) =>
+  clsx(CHAMP, !/(?:^|\s)!?(?:w-|flex-)/.test(perso ?? '') && 'w-full', perso)
+
 export function Input(p: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...p} className={clsx(base, p.className)} />
+  return <input {...p} className={base(p.className)} />
 }
 
 export function Select(p: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...p} className={clsx(base, 'appearance-none pr-8', p.className)} />
+  return <select {...p} className={base(clsx('appearance-none pr-8', p.className))} />
 }
 
 export function TextArea(p: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...p} className={clsx(base, 'min-h-[72px]', p.className)} />
+  return <textarea {...p} className={base(clsx('min-h-[72px]', p.className))} />
 }
 
 /** Saisie de montant : clavier numérique sur mobile, séparateurs tolérés. */
@@ -131,7 +141,7 @@ export function MoneyInput({ value, onChange, ...rest }: {
         setTexte(propre)
         onChange(nombreDepuisTexte(propre))
       }}
-      className={clsx(base, 'text-right font-semibold tabular-nums', rest.className)}
+      className={base(clsx('text-right font-semibold tabular-nums', rest.className))}
     />
   )
 }
