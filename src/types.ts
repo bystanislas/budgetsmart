@@ -118,6 +118,8 @@ export interface Parametres {
   deviseBase: string
   /** Cours de chaque devise, exprimé en unités de la devise de référence interne (XOF). */
   cours: Record<string, number>
+  /** Date publiée par la source lors de la dernière mise à jour en ligne. */
+  coursMaj?: string
   anneeTravail: number
   moisSuivi: number           // 1..12
   tresorerieInitiale: number

@@ -23,6 +23,22 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.9.0',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'nouveau',
+        fr: 'Un bouton « Mettre à jour les cours » va chercher les taux du jour en ligne, dans Paramètres → Cours des devises. Sans connexion, vos cours enregistrés restent en place et l’application vous le dit.',
+        en: 'An “Update rates” button fetches today’s rates online, under Settings → Exchange rates. With no connection your saved rates stay put and the app tells you so.',
+      },
+      {
+        genre: 'correction',
+        fr: 'Le menu du bas ne flotte plus au-dessus du contenu et ne saute plus quand la barre du navigateur apparaît : le menu et l’en-tête sont fixes, seul le contenu défile.',
+        en: 'The bottom menu no longer floats over the content or jumps when the browser bar appears: menu and header are fixed, only the content scrolls.',
+      },
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-09-04',
     changements: [

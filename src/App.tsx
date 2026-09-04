@@ -58,8 +58,12 @@ export default function App() {
   }, [utilisateur?.uid])
 
   return (
-    <div className="min-h-[100dvh] bg-surface-100 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-30 border-b border-apex-ink/20 bg-apex-navy
+    /* En-tête et menu font partie de la mise en page, et non de flottants
+       posés par-dessus : seul le contenu défile. Un menu en « fixed » saute
+       sur mobile dès que la barre d'adresse du navigateur s'escamote, et son
+       fond translucide laissait défiler le texte derrière lui. */
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-100">
+      <header className="shrink-0 border-b border-apex-ink/20 bg-apex-navy
                          px-4 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] text-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -94,7 +98,8 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-4">
+      <main className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <div className="mx-auto max-w-3xl">
         <Routes>
           <Route path="/" element={<Accueil />} />
           <Route path="/parametres" element={<Parametres />} />
@@ -108,10 +113,11 @@ export default function App() {
           <Route path="/partager" element={<Partager />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-200 bg-white/95
-                      pb-[env(safe-area-inset-bottom)] backdrop-blur">
+      <nav className="shrink-0 border-t border-surface-200 bg-white
+                      pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto flex max-w-3xl">
           {ONGLETS.map(({ to, icon: Icon, cle }) => (
             <NavLink

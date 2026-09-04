@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Btn, Card, Field, Input, Kpi, MoneyInput, Puce, Section, Select } from '../components/kit'
 import EditeurCategories from '../components/EditeurCategories'
 import {
@@ -18,6 +18,7 @@ import { EGLISE_DEFAUT_EN } from '../data/refs-en'
 import { db, getParametres, majParametres, stamp, uid } from '../db'
 import { soldeCompte } from '../lib/compute'
 import { fmt, nomDevise, symboleDevise } from '../lib/money'
+import { telechargerCours } from '../lib/cours'
 import type { Compte } from '../types'
 
 /** Sépare l'indicatif du numéro dans le champ téléphone, sans champ séparé à migrer. */
@@ -35,6 +36,7 @@ const NATURES_COMPTE = [
 
 export default function Parametres() {
   const [moyen, setMoyen] = useState('')
+  const [majCours, setMajCours] = useState<'' | 'encours' | 'ok' | 'echec'>('')
   const utilisateur = useUtilisateur()
   const t = useT()
   const p = useLiveQuery(() => getParametres(), [])
@@ -106,6 +108,24 @@ export default function Parametres() {
   const changerPays = (pays: string) => {
     const devise = pays ? deviseDuPays(pays) : undefined
     set({ pays, ...(devise ? { deviseBase: devise } : {}) })
+  }
+
+  /**
+   * Va chercher les cours du jour. L'application n'en dépend pas : si la
+   * source ne répond pas, les cours déjà enregistrés restent en place et on
+   * le dit, plutôt que de laisser croire à une mise à jour silencieuse.
+   */
+  const rafraichirCours = async () => {
+    setMajCours('encours')
+    try {
+      const { cours, date } = await telechargerCours(DEVISES.map(([c]) => c))
+      // On complète sans écraser : une devise absente de la source garde le
+      // cours que l'utilisateur avait éventuellement saisi lui-même.
+      set({ cours: { ...p.cours, ...cours }, coursMaj: date || new Date().toISOString().slice(0, 10) })
+      setMajCours('ok')
+    } catch {
+      setMajCours('echec')
+    }
   }
 
   const ajouterMoyen = () => {
@@ -442,6 +462,22 @@ export default function Parametres() {
 
       <Section title={t('parametres.coursSection')}
                action={<span className="text-2xs text-surface-500">{t('parametres.coursAide', { devise: p.deviseBase })}</span>}>
+        <Card className="mb-2.5 space-y-2 p-3">
+          <Btn variant="ghost" className="w-full" disabled={majCours === 'encours'}
+               onClick={() => void rafraichirCours()}>
+            <RefreshCw size={16} className={majCours === 'encours' ? 'animate-spin' : ''} />
+            {t('parametres.coursMaj')}
+          </Btn>
+          <p className={`text-2xs leading-relaxed ${
+            majCours === 'echec' ? 'font-semibold text-apex-red' : 'text-surface-500'
+          }`}>
+            {majCours === 'echec' ? t('parametres.coursMajEchec')
+              : majCours === 'ok' ? t('parametres.coursMajOk')
+                : p.coursMaj ? t('parametres.coursMajLe', { date: p.coursMaj })
+                  : t('parametres.coursMajAide')}
+          </p>
+        </Card>
+
         <Card className="max-h-96 divide-y divide-surface-200 overflow-y-auto">
           {DEVISES.filter(([c]) => c !== p.deviseBase).map(([code]) => (
             <div key={code} className="flex items-center justify-between gap-3 px-4 py-2.5">
