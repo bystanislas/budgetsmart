@@ -23,6 +23,27 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.9.1',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Les cadres de saisie des cours partaient en escalier : leur largeur dépendait de la longueur du nom de la devise. Ils sont maintenant alignés.',
+        en: 'The rate fields were staggered: their width depended on the length of the currency name. They are now aligned.',
+      },
+      {
+        genre: 'amelioration',
+        fr: 'La devise de votre budget est rappelée en tête de la liste des cours, sur fond doré. La première ligne de la liste est simplement la première des autres devises, jamais la vôtre.',
+        en: 'Your budget currency is now shown at the top of the rates list, on a gold background. The first row of the list is just the first of the other currencies, never yours.',
+      },
+      {
+        genre: 'nouveau',
+        fr: 'Un convertisseur dans les paramètres : tapez un montant, choisissez deux devises, le résultat s’affiche à mesure que vous tapez.',
+        en: 'A converter in settings: type an amount, pick two currencies, the result appears as you type.',
+      },
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-09-04',
     changements: [

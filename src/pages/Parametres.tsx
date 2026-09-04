@@ -17,7 +17,7 @@ import { EGLISE_DEFAUT } from '../data/refs'
 import { EGLISE_DEFAUT_EN } from '../data/refs-en'
 import { db, getParametres, majParametres, stamp, uid } from '../db'
 import { soldeCompte } from '../lib/compute'
-import { fmt, nomDevise, symboleDevise } from '../lib/money'
+import { convertirEntre, fmt, nomDevise, symboleDevise } from '../lib/money'
 import { telechargerCours } from '../lib/cours'
 import type { Compte } from '../types'
 
@@ -37,6 +37,9 @@ const NATURES_COMPTE = [
 export default function Parametres() {
   const [moyen, setMoyen] = useState('')
   const [majCours, setMajCours] = useState<'' | 'encours' | 'ok' | 'echec'>('')
+  const [essai, setEssai] = useState<{ montant: number; de: string; vers: string }>(
+    { montant: 0, de: '', vers: '' },
+  )
   const utilisateur = useUtilisateur()
   const t = useT()
   const p = useLiveQuery(() => getParametres(), [])
@@ -478,13 +481,63 @@ export default function Parametres() {
           </p>
         </Card>
 
+        {/* La devise du budget est rappelée en tête, non modifiable : sans cela
+            la première ligne de la liste passe pour la devise principale. */}
+        <Card className="mb-2.5 flex items-center justify-between gap-3 border-apex-gold
+                         bg-apex-cream px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-apex-navy">
+              {p.deviseBase} · {nomDevise(p.deviseBase, p.langue)}
+            </p>
+            <p className="text-2xs text-surface-500">{t('parametres.deviseDuBudget')}</p>
+          </div>
+          <Puce ton="ok">{t('parametres.reference')}</Puce>
+        </Card>
+
+        {/* Convertisseur : la vérification la plus directe que les cours
+            enregistrés donnent bien le résultat attendu. */}
+        <Card className="mb-2.5 space-y-2 p-3">
+          <p className="text-2xs font-bold uppercase tracking-wider text-surface-500">
+            {t('parametres.convertisseur')}
+          </p>
+          <div className="flex items-center gap-2">
+            <MoneyInput
+              className="!w-28 shrink-0" value={essai.montant}
+              onChange={(v) => setEssai({ ...essai, montant: v })}
+            />
+            <Select className="!flex-1 !px-2" value={essai.de || p.deviseBase}
+                    onChange={(e) => setEssai({ ...essai, de: e.target.value })}>
+              {DEVISES.map(([c]) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+            <span className="shrink-0 text-sm font-bold text-surface-400">→</span>
+            <Select className="!flex-1 !px-2" value={essai.vers || 'EUR'}
+                    onChange={(e) => setEssai({ ...essai, vers: e.target.value })}>
+              {DEVISES.map(([c]) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </div>
+          {essai.montant > 0 && (() => {
+            const de = essai.de || p.deviseBase
+            const vers = essai.vers || 'EUR'
+            const r = convertirEntre(p, essai.montant, de, vers)
+            return (
+              <p className={`text-sm font-bold ${r === null ? 'text-apex-red' : 'text-apex-navy'}`}>
+                {r === null
+                  ? t('parametres.convertisseurImpossible')
+                  : `${essai.montant.toLocaleString(p.langue === 'en' ? 'en-GB' : 'fr-FR')} ${de}`
+                    + ` = ${r.toLocaleString(p.langue === 'en' ? 'en-GB' : 'fr-FR')} ${vers}`}
+              </p>
+            )
+          })()}
+        </Card>
+
         <Card className="max-h-96 divide-y divide-surface-200 overflow-y-auto">
           {DEVISES.filter(([c]) => c !== p.deviseBase).map(([code]) => (
-            <div key={code} className="flex items-center justify-between gap-3 px-4 py-2.5">
-              <span className="text-sm font-semibold text-apex-navy">
-                {code} <span className="font-normal text-surface-500">{nomDevise(code, p.langue)}</span>
+            <div key={code} className="grid grid-cols-[1fr_8rem] items-center gap-3 px-4 py-2.5">
+              <span className="min-w-0 text-sm font-semibold leading-tight text-apex-navy">
+                {code}{' '}
+                <span className="font-normal text-surface-500">{nomDevise(code, p.langue)}</span>
               </span>
-              <MoneyInput className="w-32" value={coursAffiche(code)}
+              <MoneyInput className="!w-32" value={coursAffiche(code)}
                           onChange={(v) => set({ cours: { ...p.cours, [code]: v * pivot } })} />
             </div>
           ))}

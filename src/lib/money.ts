@@ -64,5 +64,19 @@ export function fmt(p: Parametres, v: number | null | undefined, opts?: { court?
   return `${v.toLocaleString(loc, { minimumFractionDigits: dec, maximumFractionDigits: dec })} ${sym}`
 }
 
+/**
+ * Convertit d'une devise vers une autre, en passant par la devise de base.
+ * Retourne `null` quand un des deux cours manque : mieux vaut ne rien
+ * afficher qu'un nombre auquel on ne peut pas se fier.
+ */
+export function convertirEntre(
+  p: Parametres, montant: number, de: string, vers: string,
+): number | null {
+  if (!coursConnu(p, de) || !coursConnu(p, vers)) return null
+  const versBase = taux(p, vers)
+  if (!versBase) return null
+  return Math.round((convertir(p, montant, de) / versBase) * 100) / 100
+}
+
 export const pct = (v: number, langue?: string) =>
   `${(v * 100).toLocaleString(localeDe(langue), { maximumFractionDigits: 1 })} %`
