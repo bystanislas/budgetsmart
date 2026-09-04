@@ -17,7 +17,7 @@ import {
   persistentMultipleTabManager,
 } from 'firebase/firestore'
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: 'AIzaSyCPgEWgl76-2VRgc3sNfEatOoveRWgyhJY',
   authDomain: 'budget-smart-6bf90.firebaseapp.com',
   projectId: 'budget-smart-6bf90',

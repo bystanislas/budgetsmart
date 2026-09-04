@@ -3,8 +3,9 @@ import { CloudOff, LogOut, Mail, RefreshCw, Smartphone, UserCheck } from 'lucide
 import type { ConfirmationResult } from 'firebase/auth'
 import { Btn, Card, Field, Input, Puce, Section } from './kit'
 import {
-  emailMemorise, envoyerCodeSms, envoyerLienConnexion, lienDeConnexionRecu,
-  seDeconnecter, terminerConnexionParEmail, useUtilisateur,
+  emailMemorise, envoyerCodeSms, envoyerLienConnexion, estAppInstallee,
+  lienDeConnexionRecu, saisieEstUnLien, seDeconnecter, terminerConnexionParEmail,
+  useUtilisateur,
 } from '../lib/auth'
 import { pousserTout, tirerTout } from '../lib/sync'
 import { useT } from '../i18n'
@@ -26,7 +27,12 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
   const [numero, setNumero] = useState('')
   const [confirmationSms, setConfirmationSms] = useState<ConfirmationResult | null>(null)
   const [code, setCode] = useState('')
+  const [lienColle, setLienColle] = useState('')
   const [occupe, setOccupe] = useState(false)
+
+  // Depuis l'écran d'accueil, le lien reçu par email s'ouvre dans le
+  // navigateur et non dans l'application : on propose d'emblée de le coller.
+  const installee = estAppInstallee()
 
   // Retour depuis le lien reçu par email : on termine tout seul si l'email a
   // été mémorisé sur cet appareil, sinon on le redemande (cas d'un lien ouvert
@@ -155,9 +161,36 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
             </div>
             {lienEnvoye && (
               <span className="mt-1 block text-2xs font-semibold text-apex-green">
-                {t('compte.lienEnvoye')}
+                {t(installee ? 'compte.lienEnvoyeApp' : 'compte.lienEnvoye')}
               </span>
             )}
+          </Field>
+        )}
+
+        {(installee || lienEnvoye) && (
+          <Field label={t('compte.collerLien')} hint={t('compte.collerLienAide')}>
+            <Input
+              value={lienColle}
+              placeholder={t('compte.collerLienPlaceholder')}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              onChange={(e) => setLienColle(e.target.value)}
+            />
+            <Btn
+              className="mt-2 w-full"
+              variant="gold"
+              disabled={occupe || !lienColle.trim() || !(email.trim() || emailMemorise())}
+              onClick={() => void proteger(async () => {
+                if (!saisieEstUnLien(lienColle)) throw new Error(t('compte.lienIllisible'))
+                const adresse = (email.trim() || emailMemorise()) ?? ''
+                await terminerConnexionParEmail(adresse, lienColle)
+                setLienColle('')
+                annonce(t('compte.connexionReussie'))
+              }, t('compte.lienIllisible'))}
+            >
+              {t('compte.terminerConnexion')}
+            </Btn>
           </Field>
         )}
 
