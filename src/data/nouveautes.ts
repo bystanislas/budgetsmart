@@ -23,6 +23,32 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '2.0.0',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Le solde de vos comptes ignorait les virements : une épargne quittait le compte courant sans jamais arriver sur le compte d’épargne, et un transfert entre comptes ne bougeait rien. Votre trésorerie était donc sous-évaluée de tout ce que vous aviez mis de côté.',
+        en: 'Account balances ignored transfers: savings left the current account without ever landing on the savings account, and a transfer between accounts moved nothing. Your cash on hand was understated by everything you had set aside.',
+      },
+      {
+        genre: 'correction',
+        fr: 'Le journal comptait les budgets mariage, immobilier et projets dans ses totaux du mois, alors que l’accueil et le tableau de bord les excluaient. Le même mois affichait deux totaux différents selon la page.',
+        en: 'The entries page counted wedding, property and project budgets in its monthly totals while the home and overview pages excluded them. The same month showed two different totals depending on the page.',
+      },
+      {
+        genre: 'correction',
+        fr: 'Dans un même rapport Excel ou PDF, la feuille de synthèse et le journal détaillé annonçaient des totaux contradictoires, pour la même raison.',
+        en: 'Within one Excel or PDF report, the summary sheet and the detailed log announced contradictory totals, for the same reason.',
+      },
+      {
+        genre: 'correction',
+        fr: 'En anglais, limiter la dîme au salaire ne reconnaissait aucune catégorie : la dîme due tombait à zéro sans le dire.',
+        en: 'In English, limiting the tithe to salary matched no category: the tithe owed silently fell to zero.',
+      },
+    ],
+  },
+  {
     version: '1.9.4',
     date: '2026-09-04',
     changements: [

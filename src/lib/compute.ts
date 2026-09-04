@@ -3,7 +3,7 @@
  * Tout part des écritures ; rien n'est saisi deux fois.
  */
 import { sensDe } from '../data/refs'
-import { estDime } from '../data/concepts'
+import { estDime, estPrime, estSalaire } from '../data/concepts'
 import type { Compte, Ecriture, LignePlan, ModuleId, Parametres, TypeOp } from '../types'
 
 /** Une écriture compte dans le réalisé si elle n'est ni annulée ni seulement prévue. */
@@ -144,9 +144,9 @@ export function calculerDime(
     if (e.type === 'revenu') {
       const ok =
         p.dimeAssiette === 'tous' ||
-        (p.dimeAssiette === 'salaire' && e.categorie === 'Salaire') ||
-        (p.dimeAssiette === 'salaire_primes' &&
-          (e.categorie === 'Salaire' || e.categorie === 'Prime / 13e mois'))
+        (p.dimeAssiette === 'salaire' && estSalaire(e.categorie)) ||
+        (p.dimeAssiette === 'salaire_primes'
+          && (estSalaire(e.categorie) || estPrime(e.categorie)))
       if (ok) assiette += e.montantBase
     }
     // L'offrande n'est pas la dîme : seule la dîme éteint la dîme due,
@@ -158,13 +158,27 @@ export function calculerDime(
 }
 
 /** Solde d'un compte : ouverture + entrées − sorties. Les transferts sont neutres. */
+/**
+ * Solde d'un compte : son ouverture, plus tout ce qui y entre, moins tout ce
+ * qui en sort.
+ *
+ * Deux mouvements se jouent à deux comptes et doivent être suivis des deux
+ * côtés, sans quoi l'argent semble disparaître : un transfert quitte un
+ * compte pour en rejoindre un autre, et une épargne quitte le compte courant
+ * pour se poser sur le compte d'épargne indiqué. Le compte destination est
+ * donc crédité, et le compte d'origine débité même pour un transfert — qui
+ * n'est ni une entrée ni une sortie pour le budget, mais bien un mouvement
+ * pour les comptes.
+ */
 export function soldeCompte(compteId: string, ouverture: number, ecritures: Ecriture[]): number {
   let s = ouverture
   for (const e of ecritures) {
-    if (e.compteId !== compteId || !estRealisee(e)) continue
-    const sens = sensDe(e.type)
-    if (sens === 'entree') s += e.montantBase
-    else if (sens === 'sortie') s -= e.montantBase
+    if (!estRealisee(e)) continue
+    if (e.compteId === compteId) {
+      if (sensDe(e.type) === 'entree') s += e.montantBase
+      else s -= e.montantBase
+    }
+    if (e.compteCibleId === compteId) s += e.montantBase
   }
   return s
 }

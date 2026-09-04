@@ -13,7 +13,8 @@ import { dictionnaire, labelModule, labelStatut, labelType, traducteurPour } fro
 import { estLangue, LANGUE_DEFAUT, type Langue } from '../i18n/langues'
 import { db, getParametres } from '../db'
 import {
-  agregerAnnee, calculerDime, creances, detailEpargne, empruntsEnCours, estRealisee,
+  agregerAnnee, calculerDime, creances, dansPerimetre, detailEpargne, empruntsEnCours,
+  estRealisee,
 } from './compute'
 import { fmt } from './money'
 import { bornes, moisCouverts, type Periode } from './periode'
@@ -62,7 +63,13 @@ export async function exporterPdf(periode: Periode): Promise<string> {
   const TOTAL = t('rapport.totalMaj')
 
   const b = bornes(periode, langue)
-  const ecritures = toutes.filter((e) => e.date >= b.debut && e.date <= b.fin)
+  // Même périmètre que les écrans : sans lui, la feuille de synthèse et le
+  // journal détaillé du même document annonçaient deux totaux différents,
+  // l'un excluant les budgets mariage ou immobilier et l'autre non. Le
+  // périmètre retenu est rappelé dans la feuille des paramètres.
+  const ecritures = toutes.filter(
+    (e) => e.date >= b.debut && e.date <= b.fin && dansPerimetre(p, e),
+  )
   const nomCompte = (id?: string) => comptes.find((c) => c.id === id)?.nom ?? ''
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   const L = doc.internal.pageSize.getWidth()

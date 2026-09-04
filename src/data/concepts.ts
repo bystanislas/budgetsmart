@@ -33,6 +33,18 @@ export const NOMS_PRET = new Set([CAT_PRET, CAT_PRET_EN])
 export const NOMS_EMPRUNT = new Set([CAT_EMPRUNT, CAT_EMPRUNT_EN])
 export const NOMS_REMB_RECU = new Set([CAT_REMB_RECU, CAT_REMB_RECU_EN])
 
+/**
+ * Salaire et primes, dans les deux langues. L'assiette de la dîme peut être
+ * limitée au salaire : sans cette reconnaissance, elle ne trouvait rien dès
+ * que l'utilisateur passait l'application en anglais, et la dîme due tombait
+ * silencieusement à zéro.
+ */
+export const NOMS_SALAIRE = new Set(['Salaire', 'Salary'])
+export const NOMS_PRIME = new Set(['Prime / 13e mois', 'Bonus / 13th month'])
+
+export const estSalaire = (categorie: string) => NOMS_SALAIRE.has(categorie)
+export const estPrime = (categorie: string) => NOMS_PRIME.has(categorie)
+
 export const estDime = (categorie: string) => NOMS_DIME.has(categorie)
 export const estSpirituel = (categorie: string) => NOMS_SPIRITUEL.has(categorie)
 export const estEpargne = (categorie: string) => NOMS_EPARGNE.has(categorie)

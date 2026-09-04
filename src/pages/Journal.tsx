@@ -16,7 +16,7 @@ import {
 import { categoriesPour, moyensDe, sousCategoriesDe } from '../lib/referentiel'
 import { estSpirituel } from '../data/concepts'
 import { db, getParametres, now, uid } from '../db'
-import { anneeDe, estRealisee, moisDe } from '../lib/compute'
+import { anneeDe, dansPerimetre, estRealisee, moisDe } from '../lib/compute'
 import { convertir, coursConnu, fmt } from '../lib/money'
 import type { Ecriture, ModuleId, Statut, TypeOp } from '../types'
 
@@ -71,6 +71,10 @@ export default function Journal() {
     let entrees = 0, sorties = 0
     for (const e of ecritures) {
       if (anneeDe(e) !== p.anneeTravail || moisDe(e) !== p.moisSuivi || !estRealisee(e)) continue
+      // Même périmètre que l'accueil, le tableau de bord et les rapports :
+      // sans ce filtre, le même mois affichait deux totaux différents selon
+      // la page, les budgets mariage ou immobilier n'étant comptés qu'ici.
+      if (!dansPerimetre(p, e)) continue
       const s = sensDe(e.type)
       if (s === 'entree') entrees += e.montantBase
       else if (s === 'sortie') sorties += e.montantBase
