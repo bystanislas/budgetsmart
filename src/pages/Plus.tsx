@@ -1,9 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
-  AlertTriangle, ArrowLeftRight, Download, FileSpreadsheet, FileText, Pencil,
+  AlertTriangle, ArrowLeftRight, Bell, ChevronRight, Download, FileSpreadsheet,
+  FileText, Pencil,
   Plus as PlusIcon, Repeat2, RotateCcw, Target, Trash2, TrendingDown, Upload,
   UserCog, Zap,
 } from 'lucide-react'
+import { VERSION_ACTUELLE, useNouveautes } from '../lib/nouveautes'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -63,6 +65,7 @@ function prochaine(date: string, frequence: Recurrent['frequence']): string {
 
 export default function Plus() {
   const nav = useNavigate()
+  const nouveautes = useNouveautes()
   const t = useT()
   const langue = useLangue()
   const nomsMois = useMois()
@@ -546,6 +549,28 @@ export default function Plus() {
 
       {/* ----------------------------------------------------------- à propos */}
       <Section title={t('plus.aPropos')}>
+        <Card onClick={() => nav('/nouveautes')}
+              className="mb-2.5 flex items-center gap-3 p-3">
+          <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl
+                          bg-apex-navy text-white">
+            <Bell size={20} strokeWidth={2.2} />
+            {nouveautes.length > 0 && (
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full
+                               bg-apex-gold ring-2 ring-apex-navy" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-apex-navy">{t('nouveautes.titre')}</p>
+            <p className="truncate text-2xs text-surface-500">
+              {nouveautes.length > 0
+                ? t(nouveautes.length > 1
+                  ? 'nouveautes.misAJourSousPluriel' : 'nouveautes.misAJourSous',
+                { n: nouveautes.length })
+                : `Version ${VERSION_ACTUELLE}`}
+            </p>
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-surface-400" />
+        </Card>
         <Card className="space-y-1.5 p-4 text-center">
           <p className="text-base font-bold text-apex-navy">{APP_NAME}</p>
           <p className="text-xs font-semibold text-apex-gold">{APP_BRAND}</p>

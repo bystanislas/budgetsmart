@@ -1,9 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
-import { Home, NotebookPen, PieChart, Settings, Table2 } from 'lucide-react'
+import { Bell, Home, NotebookPen, PieChart, Settings, Table2 } from 'lucide-react'
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { lienDeConnexionRecu, useUtilisateur } from './lib/auth'
 import { useT } from './i18n'
+import { useNouveautes } from './lib/nouveautes'
 import { definirUtilisateurSync, pousserTout, tirerTout } from './lib/sync'
 import { getParametres } from './db'
 import { APP_BRAND, APP_NAME } from './data/refs'
@@ -12,6 +13,7 @@ import Estimation from './pages/Estimation'
 import Journal from './pages/Journal'
 import ModulePage from './pages/Module'
 import Parametres from './pages/Parametres'
+import Nouveautes from './pages/Nouveautes'
 import Plus from './pages/Plus'
 import TableauBord from './pages/TableauBord'
 
@@ -28,6 +30,7 @@ export default function App() {
   const utilisateur = useUtilisateur()
   const nav = useNavigate()
   const t = useT()
+  const nouveautes = useNouveautes()
 
   // Retour depuis le lien de connexion reçu par email : la page « Plus »
   // porte le formulaire qui termine l'opération.
@@ -61,13 +64,28 @@ export default function App() {
               <p className="text-2xs text-white/60">{APP_BRAND}</p>
             </div>
           </div>
-          {p && (
-            <p className="text-right text-2xs text-white/70">
-              {p.raisonSociale || t('rapport.monBudget')}
-              <br />
-              <span className="text-white/50">{p.deviseBase} · {p.anneeTravail}</span>
-            </p>
-          )}
+          <div className="flex items-center gap-3">
+            {p && (
+              <p className="text-right text-2xs text-white/70">
+                {p.raisonSociale || t('rapport.monBudget')}
+                <br />
+                <span className="text-white/50">{p.deviseBase} · {p.anneeTravail}</span>
+              </p>
+            )}
+            {/* La cloche n'existe que s'il y a réellement quelque chose à annoncer. */}
+            {nouveautes.length > 0 && (
+              <button
+                onClick={() => nav('/nouveautes')}
+                aria-label={t('nouveautes.titre')}
+                className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl
+                           bg-white/10 text-white transition hover:bg-white/20"
+              >
+                <Bell size={18} strokeWidth={2.2} />
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full
+                                 bg-apex-gold ring-2 ring-apex-navy" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -80,6 +98,7 @@ export default function App() {
           <Route path="/tableau-de-bord" element={<TableauBord />} />
           <Route path="/module/:id" element={<ModulePage />} />
           <Route path="/plus" element={<Plus />} />
+          <Route path="/nouveautes" element={<Nouveautes />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

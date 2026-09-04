@@ -481,6 +481,23 @@ export const fr = {
     t4: 'T4 — octobre à décembre',
   },
 
+  nouveautes: {
+    titre: 'Nouveautés',
+    sousTitre: 'Ce qui a changé dans l’application, et qui est déjà actif chez vous.',
+    aucune: 'Vous êtes à jour. Rien de nouveau depuis votre dernière visite.',
+    versionDu: 'Version {version} — {date}',
+    dejaActif: 'déjà actif',
+    nouveau: 'Nouveau',
+    amelioration: 'Amélioration',
+    correction: 'Correction',
+    misAJour: 'Application mise à jour',
+    misAJourSous: '{n} nouveauté à découvrir',
+    misAJourSousPluriel: '{n} nouveautés à découvrir',
+    voir: 'Voir ce qui a changé',
+    compris: 'J’ai lu',
+    historique: 'Historique des versions',
+  },
+
   rapport: {
     synthese: 'Synthèse',
     syntheseDeLaPeriode: 'Synthèse de la période',

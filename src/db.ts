@@ -107,10 +107,14 @@ export async function majParametres(patch: Partial<Parametres>) {
   return next
 }
 
-/** Comptes proposés au premier lancement : on peut démarrer sans rien configurer. */
-export async function amorcer() {
+/**
+ * Comptes proposés au premier lancement : on peut démarrer sans rien
+ * configurer. Retourne vrai s'il s'agit d'une toute première installation.
+ */
+export async function amorcer(): Promise<boolean> {
   const p = await getParametres()
-  if ((await db.comptes.count()) === 0) {
+  const premiereInstallation = (await db.comptes.count()) === 0
+  if (premiereInstallation) {
     // Les comptes proposés portent des noms dans la langue de l'utilisateur :
     // ce sont des données, elles ne seront plus retraduites par la suite.
     const dico = (p.langue === 'en' ? en : fr).parametres
@@ -124,4 +128,5 @@ export async function amorcer() {
       base.map((c) => stamp({ id: uid(), soldeOuverture: 0, ...c })),
     )
   }
+  return premiereInstallation
 }

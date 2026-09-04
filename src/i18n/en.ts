@@ -478,6 +478,23 @@ export const en: Dictionnaire = {
     t4: 'Q4 — October to December',
   },
 
+  nouveautes: {
+    titre: 'What’s new',
+    sousTitre: 'What changed in the app, and is already live for you.',
+    aucune: 'You are up to date. Nothing new since your last visit.',
+    versionDu: 'Version {version} — {date}',
+    dejaActif: 'already live',
+    nouveau: 'New',
+    amelioration: 'Improvement',
+    correction: 'Fix',
+    misAJour: 'App updated',
+    misAJourSous: '{n} change to discover',
+    misAJourSousPluriel: '{n} changes to discover',
+    voir: 'See what changed',
+    compris: 'Got it',
+    historique: 'Version history',
+  },
+
   rapport: {
     synthese: 'Summary',
     syntheseDeLaPeriode: 'Summary for the period',
