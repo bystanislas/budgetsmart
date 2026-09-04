@@ -3,9 +3,9 @@ import { CloudOff, LogOut, Mail, RefreshCw, Smartphone, UserCheck } from 'lucide
 import type { ConfirmationResult } from 'firebase/auth'
 import { Btn, Card, Field, Input, Puce, Section } from './kit'
 import {
-  emailMemorise, envoyerCodeSms, envoyerLienConnexion, estAppInstallee,
-  lienDeConnexionRecu, saisieEstUnLien, seDeconnecter, terminerConnexionParEmail,
-  useUtilisateur,
+  causeEchecLien, emailMemorise, envoyerCodeSms, envoyerLienConnexion,
+  estAppInstallee, lienDeConnexionRecu, saisieEstUnLien, seDeconnecter,
+  terminerConnexionParEmail, useUtilisateur,
 } from '../lib/auth'
 import { pousserTout, tirerTout } from '../lib/sync'
 import { useT } from '../i18n'
@@ -51,6 +51,34 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
   const proteger = async (action: () => Promise<void>, echec: string) => {
     setOccupe(true)
     try { await action() } catch { annonce(echec) } finally { setOccupe(false) }
+  }
+
+  /**
+   * Un lien refusé a plusieurs causes possibles, et l'utilisateur ne peut
+   * corriger que celle qui le concerne : dire « lien invalide » à quelqu'un
+   * dont le lien a simplement déjà servi le condamne à recommencer en boucle.
+   */
+  const MESSAGE_ECHEC = {
+    illisible: 'compte.lienIllisible',
+    expire: 'compte.lienDejaUtilise',
+    email: 'compte.emailNeCorrespondPas',
+    reseau: 'compte.reseauIndisponible',
+    autre: 'compte.connexionEchouee',
+  } as const
+
+  const terminerAvecLienColle = async () => {
+    if (!saisieEstUnLien(lienColle)) { annonce(t('compte.lienIllisible')); return }
+    const adresse = (email.trim() || emailMemorise()) ?? ''
+    setOccupe(true)
+    try {
+      await terminerConnexionParEmail(adresse, lienColle)
+      setLienColle('')
+      annonce(t('compte.connexionReussie'))
+    } catch (erreur) {
+      annonce(t(MESSAGE_ECHEC[causeEchecLien(erreur)]))
+    } finally {
+      setOccupe(false)
+    }
   }
 
   /* ------------------------------------------------------- déjà connecté */
@@ -181,13 +209,7 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
               className="mt-2 w-full"
               variant="gold"
               disabled={occupe || !lienColle.trim() || !(email.trim() || emailMemorise())}
-              onClick={() => void proteger(async () => {
-                if (!saisieEstUnLien(lienColle)) throw new Error(t('compte.lienIllisible'))
-                const adresse = (email.trim() || emailMemorise()) ?? ''
-                await terminerConnexionParEmail(adresse, lienColle)
-                setLienColle('')
-                annonce(t('compte.connexionReussie'))
-              }, t('compte.lienIllisible'))}
+              onClick={() => void terminerAvecLienColle()}
             >
               {t('compte.terminerConnexion')}
             </Btn>

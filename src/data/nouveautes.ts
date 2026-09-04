@@ -23,6 +23,22 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.5.1',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Le lien de connexion collé depuis un email était refusé à tort : les messageries l’enveloppent dans une redirection et le coupent en plusieurs lignes. Il est désormais accepté sous toutes ses formes, y compris le code seul.',
+        en: 'A sign-in link pasted from an email was wrongly rejected: mail apps wrap it in a redirect and break it across lines. It is now accepted in every shape, including the code on its own.',
+      },
+      {
+        genre: 'amelioration',
+        fr: 'Quand une connexion échoue, l’application dit enfin laquelle des causes s’applique : lien déjà utilisé, mauvaise adresse email, ou absence de réseau.',
+        en: 'When sign-in fails, the app now says which cause applies: link already used, wrong email address, or no network.',
+      },
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-09-04',
     changements: [

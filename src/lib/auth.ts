@@ -43,22 +43,56 @@ export const lienDeConnexionRecu = () => isSignInWithEmailLink(auth, window.loca
 export const emailMemorise = () => localStorage.getItem(CLE_EMAIL_ATTENTE)
 
 /**
- * Normalise ce que l'utilisateur colle : soit le lien complet copié depuis
- * l'email, soit le seul code de vérification qu'il contient. Dans ce second
- * cas on reconstitue le lien attendu par Firebase.
+ * Retrouve le code de vérification dans ce que l'utilisateur a collé.
+ *
+ * Un lien copié depuis un email arrive rarement intact : les messageries le
+ * coupent en plusieurs lignes, l'enveloppent dans une redirection maison
+ * (google.com/url?q=…, safelinks…), ou il se retrouve noyé dans le texte du
+ * message. Plutôt que d'espérer une adresse exacte, on va chercher le seul
+ * élément qui compte — le code — et on rebâtit nous-mêmes le lien attendu :
+ * la clé du projet, elle, nous appartient.
  */
+export function codeDepuisSaisie(saisie: string): string | undefined {
+  const compact = saisie.replace(/\s+/g, '')
+  // « oobCode=… » en clair, ou « oobCode%3D… » dans une redirection encodée.
+  const dansLien = compact.match(/oobCode(?:=|%3D)([A-Za-z0-9_-]+)/i)?.[1]
+  if (dansLien) return dansLien
+  // Sinon, l'utilisateur peut avoir collé le code seul. Un vrai code est long
+  // et contient toujours des chiffres : la condition écarte une phrase saisie
+  // à la place, qui serait sinon envoyée à Firebase comme un code.
+  const codeSeul = /^[A-Za-z0-9_-]{20,}$/.test(compact) && /\d/.test(compact)
+  return codeSeul ? compact : undefined
+}
+
+/** Le lien canonique que Firebase sait lire, reconstruit à partir du code. */
 export function lienDepuisSaisie(saisie: string): string {
-  const v = saisie.trim()
-  if (/^https?:\/\//i.test(v)) return v
+  const code = codeDepuisSaisie(saisie)
+  if (!code) return saisie.trim()
   const params = new URLSearchParams({
-    apiKey: firebaseConfig.apiKey, mode: 'signIn', oobCode: v,
+    apiKey: firebaseConfig.apiKey, mode: 'signIn', oobCode: code,
   })
   return `https://${firebaseConfig.authDomain}/__/auth/action?${params}`
 }
 
-/** Vrai si la saisie est bien un lien de connexion exploitable. */
+/** Vrai si la saisie contient un code de connexion exploitable. */
 export const saisieEstUnLien = (saisie: string) =>
-  isSignInWithEmailLink(auth, lienDepuisSaisie(saisie))
+  Boolean(codeDepuisSaisie(saisie)) && isSignInWithEmailLink(auth, lienDepuisSaisie(saisie))
+
+export type CauseEchecLien = 'illisible' | 'expire' | 'email' | 'reseau' | 'autre'
+
+/**
+ * Traduit l'échec de Firebase en cause compréhensible. Sans cela, un lien
+ * parfaitement valide mais déjà utilisé serait annoncé comme « invalide », et
+ * l'utilisateur recommencerait indéfiniment la même manipulation.
+ */
+export function causeEchecLien(erreur: unknown): CauseEchecLien {
+  const code = (erreur as { code?: string })?.code ?? ''
+  if (code.includes('invalid-action-code') || code.includes('expired-action-code')) return 'expire'
+  if (code.includes('invalid-email') || code.includes('user-disabled')) return 'email'
+  if (code.includes('network-request-failed')) return 'reseau'
+  if (code.includes('argument-error')) return 'illisible'
+  return 'autre'
+}
 
 /**
  * Termine la connexion après un clic sur le lien reçu par email — ou à partir
