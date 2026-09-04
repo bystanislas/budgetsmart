@@ -42,6 +42,16 @@ export const uid = () =>
 
 export const now = () => new Date().toISOString()
 
+/**
+ * Horodatage des données livrées d'usine — catégories, comptes proposés,
+ * paramètres par défaut. Volontairement le plus ancien possible : la
+ * synchronisation ne remplace une ligne locale que si la version distante est
+ * au moins aussi récente, et un téléphone neuf vient justement de fabriquer
+ * ces valeurs à l'instant. Sans cela, elles paraissent plus récentes que le
+ * vrai dossier de l'utilisateur, qui n'est alors jamais restauré.
+ */
+export const HORODATAGE_AMORCE = '1970-01-01T00:00:00.000Z'
+
 export function stamp<T extends object>(v: T): T & { createdAt: string; updatedAt: string } {
   const t = now()
   return { createdAt: t, updatedAt: t, ...(v as object) } as T & {
@@ -78,7 +88,7 @@ export const PARAMS_DEFAUT: Parametres = {
   categories: structuredClone(LIVRE_INITIAL.categories),
   sousCategories: structuredClone(LIVRE_INITIAL.sousCategories),
   moyens: [...LIVRE_INITIAL.moyens],
-  updatedAt: now(),
+  updatedAt: HORODATAGE_AMORCE,
 }
 
 export async function getParametres(): Promise<Parametres> {
@@ -124,9 +134,10 @@ export async function amorcer(): Promise<boolean> {
       { nom: dico.natureEspeces, nature: 'especes' as const },
       { nom: dico.natureEpargne, nature: 'epargne' as const },
     ]
-    await db.comptes.bulkPut(
-      base.map((c) => stamp({ id: uid(), soldeOuverture: 0, ...c })),
-    )
+    await db.comptes.bulkPut(base.map((c) => ({
+      id: uid(), soldeOuverture: 0, ...c,
+      createdAt: HORODATAGE_AMORCE, updatedAt: HORODATAGE_AMORCE,
+    })))
   }
   return premiereInstallation
 }

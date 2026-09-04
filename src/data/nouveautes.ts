@@ -23,6 +23,17 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.7.0',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Sur un nouveau téléphone, vos réglages ne revenaient pas : nom, devise, cours, catégories et dîme restaient aux valeurs d’usine, et les comptes apparaissaient en double. Tout est désormais restauré fidèlement.',
+        en: 'On a new phone your settings did not come back: name, currency, rates, categories and tithe stayed at factory values, and accounts appeared twice. Everything is now restored faithfully.',
+      },
+    ],
+  },
+  {
     version: '1.6.1',
     date: '2026-09-04',
     changements: [

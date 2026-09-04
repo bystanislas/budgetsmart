@@ -15,7 +15,7 @@ import {
   type DocumentData, collection, doc, getDocs, writeBatch,
 } from 'firebase/firestore'
 import { firestore } from './firebase'
-import { db } from '../db'
+import { HORODATAGE_AMORCE, db } from '../db'
 import type { Parametres } from '../types'
 
 const TABLES = [
@@ -74,6 +74,27 @@ const plusRecente = (a?: { updatedAt?: string }, b?: { updatedAt?: string }) =>
   (a?.updatedAt ?? '') >= (b?.updatedAt ?? '')
 
 /**
+ * Un téléphone neuf se crée quatre comptes d'exemple avant toute connexion.
+ * Quand le dossier de l'utilisateur revient du cloud avec les siens, ces
+ * quatre-là feraient double emploi : on les retire, à condition qu'ils ne
+ * viennent pas eux-mêmes d'être rapatriés et qu'aucune écriture ne s'y
+ * rattache. Un compte auquel on a touché porte une date réelle, jamais celle
+ * de l'amorçage : il n'est donc jamais concerné.
+ */
+async function retirerComptesDUsine(idsDistants: Set<string>) {
+  if (!idsDistants.size) return
+  const locaux = await db.comptes.toArray()
+  const dUsine = locaux.filter(
+    (c) => c.updatedAt === HORODATAGE_AMORCE && !idsDistants.has(c.id),
+  )
+  if (!dUsine.length) return
+  const ecritures = await db.ecritures.toArray()
+  const utilises = new Set(ecritures.flatMap((e) => [e.compteId, e.compteCibleId]))
+  const aSupprimer = dUsine.filter((c) => !utilises.has(c.id)).map((c) => c.id)
+  if (aSupprimer.length) await db.comptes.bulkDelete(aSupprimer)
+}
+
+/**
  * Rapatrie les données du cloud vers l'appareil, typiquement à la connexion.
  * Ne remplace une ligne locale que si la version cloud est au moins aussi
  * récente — un nouvel appareil, local vide, récupère donc tout tel quel.
@@ -85,11 +106,14 @@ export async function tirerTout(uid: string) {
     const table = tableSync(nom)
     const locales = new Map((await table.toArray()).map((l) => [l.id, l]))
     const aEcrire: LigneSync[] = []
+    const idsDistants = new Set<string>()
     instantane.forEach((document) => {
       const distante = document.data() as LigneSync
+      idsDistants.add(document.id)
       if (plusRecente(distante, locales.get(document.id))) aEcrire.push(distante)
     })
     if (aEcrire.length) await table.bulkPut(aEcrire)
+    if (nom === 'comptes') await retirerComptesDUsine(idsDistants)
   }
 
   const instantaneParams = await getDocs(collection(firestore, 'users', uid, 'parametres'))
