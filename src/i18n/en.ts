@@ -128,6 +128,7 @@ export const en: Dictionnaire = {
     entreesDuMois: 'Money in this month',
     sortiesDuMois: 'Money out this month',
     saisieRapide: 'Quick entry',
+    coursManquant: 'No rate set for {devise}: the amount cannot be converted. Tap here to enter it in settings.',
     plusDeDetails: 'More details →',
     autreCategorie: 'Other category…',
     operations: 'entry',

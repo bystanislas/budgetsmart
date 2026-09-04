@@ -21,6 +21,19 @@ export function nomDevise(code: string, langue?: string): string {
 export const symboleDevise = (code: string) => INDEX.get(code)?.[2] ?? code
 export const decimalesDevise = (code: string) => INDEX.get(code)?.[4] ?? 0
 
+/**
+ * Vrai si l'on sait convertir cette devise vers la devise de base.
+ *
+ * Un cours à zéro veut dire « non renseigné », jamais « un pour un » : la
+ * plupart des devises sont livrées sans taux, faute d'une source fiable
+ * embarquée. Mieux vaut le dire à l'utilisateur que compter faux en silence.
+ */
+export function coursConnu(p: Parametres, code?: string): boolean {
+  const from = code || p.deviseBase
+  if (from === p.deviseBase) return true
+  return Boolean(p.cours[from]) && Boolean(p.cours[p.deviseBase])
+}
+
 /** Taux d'une devise vers la devise de base, dérivé des cours saisis. */
 export function taux(p: Parametres, code?: string): number {
   const from = code || p.deviseBase

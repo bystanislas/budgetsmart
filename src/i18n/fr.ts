@@ -131,6 +131,7 @@ export const fr = {
     entreesDuMois: 'Entrées du mois',
     sortiesDuMois: 'Sorties du mois',
     saisieRapide: 'Saisie rapide',
+    coursManquant: 'Cours du {devise} non renseigné : le montant ne peut pas être converti. Appuyez ici pour le saisir dans les paramètres.',
     plusDeDetails: 'Plus de détails →',
     autreCategorie: 'Autre catégorie…',
     operations: 'opération',

@@ -7,7 +7,9 @@ import {
   CAT_DIME, CAT_DON, CAT_OFFRANDE, DEVISES, ETABLISSEMENTS, MOIS, MODULES,
   MOYENS as MOYENS_LIVRES,
 } from '../data/refs'
-import { codePays, devinerPays, indicatifDe, nomPays, paysLocalises } from '../data/pays'
+import {
+  codePays, deviseDuPays, devinerPays, indicatifDe, nomPays, paysLocalises,
+} from '../data/pays'
 import { useUtilisateur } from '../lib/auth'
 import { LANGUES, useT } from '../i18n'
 import { referentielIntact, referentielLivre } from '../lib/referentiel'
@@ -44,7 +46,11 @@ export default function Parametres() {
   useEffect(() => {
     if (p && !p.pays) {
       const suggestion = devinerPays(p.langue)
-      if (suggestion) void majParametres({ pays: suggestion })
+      if (!suggestion) return
+      // La devise du budget suit le pays : on tient ses comptes dans la
+      // monnaie du lieu où l'on vit, sauf choix contraire fait ensuite.
+      const devise = deviseDuPays(suggestion)
+      void majParametres({ pays: suggestion, ...(devise ? { deviseBase: devise } : {}) })
     }
   }, [p?.pays])
 
@@ -90,6 +96,16 @@ export default function Parametres() {
     const codePaysChoisi = p.pays ? codePays(p.pays) : undefined
     if (codePaysChoisi) patch.pays = nomPays(codePaysChoisi, langue)
     set(patch)
+  }
+
+  /**
+   * Choisir son pays fixe aussi la devise du budget : c'est presque toujours
+   * celle du lieu où l'on vit. Elle reste modifiable juste en dessous, pour
+   * qui gagne dans une monnaie et dépense dans une autre.
+   */
+  const changerPays = (pays: string) => {
+    const devise = pays ? deviseDuPays(pays) : undefined
+    set({ pays, ...(devise ? { deviseBase: devise } : {}) })
   }
 
   const ajouterMoyen = () => {
@@ -190,7 +206,7 @@ export default function Parametres() {
                    onChange={(e) => set({ ville: e.target.value })} />
           </Field>
           <Field label={t('parametres.pays')} hint={t('parametres.paysAide')}>
-            <Select value={p.pays} onChange={(e) => set({ pays: e.target.value })}>
+            <Select value={p.pays} onChange={(e) => changerPays(e.target.value)}>
               <option value="">{t('commun.choisir')}</option>
               {listePays.map(([code, nom]) => <option key={code} value={nom}>{nom}</option>)}
             </Select>

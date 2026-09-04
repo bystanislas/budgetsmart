@@ -222,6 +222,37 @@ const FUSEAU_VERS_PAYS: Record<string, string> = {
   'Asia/Beirut': 'Liban',
 }
 
+/**
+ * Devise officielle de chaque pays proposé.
+ *
+ * C'est elle qui devient la devise de base quand on choisit son pays : dans
+ * la quasi-totalité des cas, on tient son budget dans la monnaie du lieu où
+ * l'on vit. Le choix reste modifiable juste en dessous, pour qui gagne dans
+ * une monnaie et dépense dans une autre.
+ */
+export const DEVISE_DU_PAYS: Record<string, string> = {
+  CI: 'XOF', BJ: 'XOF', BF: 'XOF', GW: 'XOF', ML: 'XOF', NE: 'XOF',
+  SN: 'XOF', TG: 'XOF',
+  CM: 'XAF', CF: 'XAF', CG: 'XAF', GA: 'XAF', GQ: 'XAF', TD: 'XAF',
+  DZ: 'DZD', AO: 'AOA', BW: 'BWP', BI: 'BIF', CV: 'CVE', KM: 'KMF',
+  CD: 'CDF', DJ: 'DJF', EG: 'EGP', ER: 'ERN', SZ: 'SZL', ET: 'ETB',
+  GM: 'GMD', GH: 'GHS', GN: 'GNF', KE: 'KES', LS: 'LSL', LR: 'LRD',
+  LY: 'LYD', MG: 'MGA', MW: 'MWK', MA: 'MAD', MR: 'MRU', MU: 'MUR',
+  MZ: 'MZN', NA: 'NAD', NG: 'NGN', UG: 'UGX', RW: 'RWF', ST: 'STN',
+  SC: 'SCR', SL: 'SLE', SO: 'SOS', SD: 'SDG', SS: 'SSP', ZA: 'ZAR',
+  TZ: 'TZS', TN: 'TND', ZM: 'ZMW', ZW: 'ZWG',
+  FR: 'EUR', BE: 'EUR', DE: 'EUR', ES: 'EUR', IT: 'EUR', PT: 'EUR',
+  NL: 'EUR', CH: 'CHF', GB: 'GBP',
+  CA: 'CAD', US: 'USD', BR: 'BRL', CN: 'CNY', IN: 'INR',
+  AE: 'AED', SA: 'SAR', QA: 'QAR', LB: 'LBP', TR: 'TRY',
+}
+
+/** Devise du pays enregistré, quelle que soit la langue de son nom. */
+export function deviseDuPays(nomOuCode: string): string | undefined {
+  const code = nomOuCode.length === 2 ? nomOuCode.toUpperCase() : codePays(nomOuCode)
+  return code ? DEVISE_DU_PAYS[code] : undefined
+}
+
 export function devinerPays(langue = 'fr'): string | undefined {
   try {
     const fuseau = Intl.DateTimeFormat().resolvedOptions().timeZone

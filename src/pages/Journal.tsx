@@ -3,7 +3,7 @@ import {
   ArrowDownRight, ArrowUpRight, Check, CopyPlus, Pencil, Plus, Repeat2, Trash2,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Btn, Card, Field, Input, Kpi, MoneyInput, Puce, Section, Select, Sheet, TextArea, Vide,
 } from '../components/kit'
@@ -17,7 +17,7 @@ import { categoriesPour, moyensDe, sousCategoriesDe } from '../lib/referentiel'
 import { estSpirituel } from '../data/concepts'
 import { db, getParametres, now, uid } from '../db'
 import { anneeDe, estRealisee, moisDe } from '../lib/compute'
-import { convertir, fmt } from '../lib/money'
+import { convertir, coursConnu, fmt } from '../lib/money'
 import type { Ecriture, ModuleId, Statut, TypeOp } from '../types'
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10)
@@ -31,6 +31,7 @@ const vierge = (): Ecriture => ({
 export default function Journal() {
   const t = useT()
   const [params, setParams] = useSearchParams()
+  const nav = useNavigate()
   const p = useLiveQuery(() => getParametres(), [])
   const comptes = useLiveQuery(() => db.comptes.orderBy('nom').toArray(), [], [])
   const ecritures = useLiveQuery(
@@ -49,8 +50,12 @@ export default function Journal() {
 
   const [brouillon, setBrouillon] = useState<Ecriture | null>(null)
   const [rapide, setRapide] = useState<{
-    type: TypeOp; montant: number; categorie: string; sousCategorie: string; descriptif: string
-  }>({ type: 'depense', montant: 0, categorie: '', sousCategorie: '', descriptif: '' })
+    type: TypeOp; montant: number; devise: string
+    categorie: string; sousCategorie: string; descriptif: string
+  }>({
+    type: 'depense', montant: 0, devise: '',
+    categorie: '', sousCategorie: '', descriptif: '',
+  })
   const [filtreModule, setFiltreModule] = useState<'tout' | ModuleId>('tout')
 
   const ouvrir = (e?: Ecriture) => setBrouillon(e ? { ...e } : vierge())
@@ -100,6 +105,10 @@ export default function Journal() {
 
   if (!p) return null
 
+  // La saisie rapide part de la devise du budget, et retient celle que
+  // l'utilisateur choisit tant qu'il ne la change pas.
+  const deviseRapide = rapide.devise || p.deviseBase
+
   const moduleCourant: ModuleId = filtreModule === 'tout' ? 'general' : filtreModule
 
   /**
@@ -133,15 +142,20 @@ export default function Journal() {
         || (estSpirituel(categorie) ? descriptifPropose(categorie) : undefined),
       tiers: TYPES_TIERS.includes(rapide.type) ? rapide.descriptif.trim() || undefined : undefined,
       montant: rapide.montant,
-      devise: '',
-      montantBase: convertir(p, rapide.montant, p.deviseBase),
+      devise: deviseRapide,
+      montantBase: convertir(p, rapide.montant, deviseRapide),
       compteId: dernier?.compteId ?? comptes[0]?.id,
       compteCibleId: compteDestination,
       moyen: dernier?.moyen,
       nature: dernier?.nature,
       statut: 'paye',
     })
-    setRapide({ type: rapide.type, montant: 0, categorie: '', sousCategorie: '', descriptif: '' })
+    // La devise choisie survit à l'enregistrement : qui saisit en euro le
+    // fait rarement une seule fois.
+    setRapide({
+      type: rapide.type, montant: 0, devise: rapide.devise,
+      categorie: '', sousCategorie: '', descriptif: '',
+    })
   }
 
   /** Repasser une opération identique à la date du jour. */
@@ -215,11 +229,36 @@ export default function Journal() {
               onChange={(v) => setRapide({ ...rapide, montant: v })}
               className="flex-1 !py-3 !text-xl"
             />
+            <Select
+              className="!w-[4.5rem] shrink-0 !px-1.5 !py-3 !text-sm font-bold"
+              value={deviseRapide}
+              onChange={(e) => setRapide({ ...rapide, devise: e.target.value })}
+            >
+              {DEVISES.map(([c]) => <option key={c} value={c}>{c}</option>)}
+            </Select>
             <Btn variant="gold" className="!px-5" disabled={!rapide.montant}
                  onClick={() => void enregistrerRapide()}>
               <Check size={20} strokeWidth={2.6} />
             </Btn>
           </div>
+
+          {/* Une somme dans une autre devise est convertie sous les yeux de
+              l'utilisateur — et si le cours manque, on le dit au lieu de
+              compter un pour un en silence. */}
+          {deviseRapide !== p.deviseBase && rapide.montant > 0 && (
+            coursConnu(p, deviseRapide) ? (
+              <p className="text-sm font-bold text-apex-steel">
+                = {fmt(p, convertir(p, rapide.montant, deviseRapide))}
+              </p>
+            ) : (
+              <a href="#cours-a-renseigner"
+                 onClick={(e) => { e.preventDefault(); nav('/parametres') }}
+                 className="block rounded-xl bg-apex-cream px-3 py-2 text-2xs
+                            font-semibold leading-relaxed text-apex-navy">
+                {t('journal.coursManquant', { devise: deviseRapide })}
+              </a>
+            )
+          )}
 
           <div className="flex flex-wrap gap-1.5">
             {puces.map((c) => (

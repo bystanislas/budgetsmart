@@ -23,6 +23,27 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.8.0',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'nouveau',
+        fr: 'La saisie rapide accepte enfin une autre devise : choisissez-la à côté du montant, la conversion s’affiche aussitôt. Elle est retenue pour les saisies suivantes.',
+        en: 'Quick entry now accepts another currency: pick it next to the amount and the conversion appears at once. It is remembered for your next entries.',
+      },
+      {
+        genre: 'nouveau',
+        fr: 'Choisir son pays fixe la devise du budget — franc CFA en Côte d’Ivoire, cedi au Ghana, euro en France. Les 73 pays sont couverts, et la devise reste modifiable.',
+        en: 'Choosing your country sets the budget currency — CFA franc in Côte d’Ivoire, cedi in Ghana, euro in France. All 73 countries are covered, and the currency stays editable.',
+      },
+      {
+        genre: 'amelioration',
+        fr: 'Trente devises africaines et internationales s’ajoutent à la liste. Leur cours est à renseigner : tant qu’il ne l’est pas, l’application le dit clairement au lieu de compter un pour un en silence.',
+        en: 'Thirty more African and international currencies are available. Their rate is yours to enter: until it is, the app says so plainly instead of silently counting one for one.',
+      },
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-09-04',
     changements: [
