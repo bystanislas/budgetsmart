@@ -75,7 +75,10 @@ export function Field({ label, hint, children }: {
 }
 
 const CHAMP =
-  'rounded-xl border border-surface-300 bg-white px-3 py-2.5 text-sm outline-none ' +
+  // `min-w-0` : un champ placé dans une rangée flexible refuse sinon de
+  // rétrécir sous sa largeur naturelle — une vingtaine de caractères — et
+  // pousse ses voisins hors de l'écran.
+  'min-w-0 rounded-xl border border-surface-300 bg-white px-3 py-2.5 text-sm outline-none ' +
   'transition focus:border-apex-gold focus:ring-2 focus:ring-apex-gold/25 disabled:bg-surface-100'
 
 /**

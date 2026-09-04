@@ -177,7 +177,7 @@ export default function Journal() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-5 pb-20 animate-fade-in">
       <div className="grid grid-cols-3 gap-2.5">
         <Kpi label={t('journal.entreesDuMois')} valeur={fmt(p, totaux.entrees, { court: true })} ton="green" />
         <Kpi label={t('journal.sortiesDuMois')} valeur={fmt(p, totaux.sorties, { court: true })} ton="red" />

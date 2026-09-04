@@ -23,6 +23,22 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.9.3',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Dans la saisie rapide, le bouton de validation était poussé hors de l’écran par le champ Montant, qui refusait de rétrécir. Montant, devise et bouton tiennent de nouveau côte à côte, sur tous les formats de téléphone.',
+        en: 'In quick entry, the confirm button was pushed off screen by the Amount field, which refused to shrink. Amount, currency and button now fit side by side again, on every phone size.',
+      },
+      {
+        genre: 'amelioration',
+        fr: 'Le bouton rond doré ne recouvre plus la dernière ligne du journal.',
+        en: 'The round gold button no longer covers the last line of the entry list.',
+      },
+    ],
+  },
+  {
     version: '1.9.2',
     date: '2026-09-04',
     changements: [
