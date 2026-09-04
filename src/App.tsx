@@ -14,6 +14,7 @@ import Journal from './pages/Journal'
 import ModulePage from './pages/Module'
 import Parametres from './pages/Parametres'
 import Guide from './pages/Guide'
+import Partager from './pages/Partager'
 import Nouveautes from './pages/Nouveautes'
 import Plus from './pages/Plus'
 import TableauBord from './pages/TableauBord'
@@ -101,6 +102,7 @@ export default function App() {
           <Route path="/plus" element={<Plus />} />
           <Route path="/nouveautes" element={<Nouveautes />} />
           <Route path="/guide" element={<Guide />} />
+          <Route path="/partager" element={<Partager />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

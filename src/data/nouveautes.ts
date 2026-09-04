@@ -23,6 +23,22 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.5.0',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'nouveau',
+        fr: 'Partagez l’application à vos proches : par WhatsApp, par n’importe quelle messagerie, ou en faisant scanner un code QR affiché à l’écran. Dans Plus → Partager Budget Smart.',
+        en: 'Share the app with the people around you: on WhatsApp, through any messaging app, or by having them scan a QR code on your screen. Under More → Share Budget Smart.',
+      },
+      {
+        genre: 'nouveau',
+        fr: 'Le mode d’emploi se télécharge en PDF, à imprimer ou à envoyer à quelqu’un qui débute.',
+        en: 'The user guide can be downloaded as a PDF, to print or to send to someone starting out.',
+      },
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-09-04',
     changements: [

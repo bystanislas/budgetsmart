@@ -481,6 +481,26 @@ export const fr = {
     t4: 'T4 — octobre à décembre',
   },
 
+  partage: {
+    titre: 'Partager Budget Smart',
+    sousTitre: 'Offrez-le à vos proches : c’est gratuit et sans publicité.',
+    partager: 'Partager',
+    whatsapp: 'Envoyer par WhatsApp',
+    copier: 'Copier le message',
+    copie: 'Message copié',
+    lien: 'Adresse de l’application',
+    enPersonne: 'De vive voix',
+    qrAide: 'Faites scanner ce code avec l’appareil photo : l’application s’ouvre directement.',
+    qrAlt: 'Code QR vers Budget Smart',
+    installer: 'Installer sur le téléphone',
+    android: 'ouvrez le lien dans Chrome, puis menu ⋮ → « Installer l’application ».',
+    iphone: 'ouvrez le lien dans Safari, puis Partager → « Sur l’écran d’accueil ».',
+    gratuit: 'Budget Smart est gratuit, fonctionne sans connexion, et les données de chacun restent sur son propre téléphone.',
+    message: '{nom} — mon budget au quotidien : dépenses, épargne, dîme, mariage, projets. Gratuit et utilisable hors connexion. {lien}',
+    depuisGuide: 'Mode d’emploi en PDF',
+    depuisGuideAide: 'À imprimer ou à envoyer à quelqu’un qui débute.',
+  },
+
   guide: {
     titre: 'Mode d’emploi',
     sousTitre: 'Tout ce qu’il faut savoir pour bien démarrer, en dix minutes.',

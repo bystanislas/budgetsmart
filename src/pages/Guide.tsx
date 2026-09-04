@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import {
-  BookOpen, Building2, ChevronDown, ClipboardList, Globe2, HelpCircle,
-  Heart, FileSpreadsheet, NotebookPen, PieChart, ShieldCheck, Sparkles,
+  BookOpen, Building2, ChevronDown, ClipboardList, FileDown, Globe2, HelpCircle,
+  Heart, FileSpreadsheet, NotebookPen, PieChart, Share2, ShieldCheck, Sparkles,
   ArrowLeftRight, UserCog,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Btn, Card } from '../components/kit'
 import { GUIDE, type IconeGuide } from '../data/guide'
+import { exporterGuidePdf } from '../lib/export-guide-pdf'
 import { useLangue, useT } from '../i18n'
 
 const ICONES: Record<IconeGuide, typeof Sparkles> = {
@@ -92,6 +93,18 @@ export default function Guide() {
           )
         })}
       </div>
+
+      <Card className="grid gap-2 p-3">
+        <Btn variant="ghost" className="w-full" onClick={() => exporterGuidePdf(langue)}>
+          <FileDown size={16} /> {t('partage.depuisGuide')}
+        </Btn>
+        <Btn variant="ghost" className="w-full" onClick={() => nav('/partager')}>
+          <Share2 size={16} /> {t('partage.titre')}
+        </Btn>
+        <p className="px-1 text-center text-2xs leading-relaxed text-surface-500">
+          {t('partage.depuisGuideAide')}
+        </p>
+      </Card>
 
       <Card className="space-y-3 bg-apex-cream p-4 text-center">
         <p className="text-xs leading-relaxed text-apex-navy">{t('guide.pret')}</p>

@@ -42,6 +42,10 @@ const txt = (v: unknown): string =>
     .replace(/[\u2192\u27A1\u279C]/g, '->')
     .replace(/[\u2190]/g, '<-')
     .replace(/\u2044/g, '/')
+    .replace(/[\u2460-\u2473]\s*/g, '')
+    // Filet de sécurité : un caractère que les polices standard ne savent pas
+    // écrire sortirait en charabia sur la page ; mieux vaut ne rien écrire.
+    .replace(/[^\u0020-\u007E\u00A0-\u00FF\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178\n]/g, '')
 
 export async function exporterPdf(periode: Periode): Promise<string> {
   const p = await getParametres()

@@ -478,6 +478,26 @@ export const en: Dictionnaire = {
     t4: 'Q4 — October to December',
   },
 
+  partage: {
+    titre: 'Share Budget Smart',
+    sousTitre: 'Pass it on to your family and friends: free, no adverts.',
+    partager: 'Share',
+    whatsapp: 'Send on WhatsApp',
+    copier: 'Copy the message',
+    copie: 'Message copied',
+    lien: 'App address',
+    enPersonne: 'In person',
+    qrAide: 'Have them scan this code with their camera: the app opens straight away.',
+    qrAlt: 'QR code to Budget Smart',
+    installer: 'Install on a phone',
+    android: 'open the link in Chrome, then menu ⋮ → “Install app”.',
+    iphone: 'open the link in Safari, then Share → “Add to Home Screen”.',
+    gratuit: 'Budget Smart is free, works offline, and everyone’s data stays on their own phone.',
+    message: '{nom} — my day-to-day budget: spending, savings, tithe, wedding, projects. Free and works offline. {lien}',
+    depuisGuide: 'User guide as PDF',
+    depuisGuideAide: 'To print, or to send to someone starting out.',
+  },
+
   guide: {
     titre: 'User guide',
     sousTitre: 'Everything you need to get started properly, in ten minutes.',

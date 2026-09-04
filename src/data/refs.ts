@@ -6,6 +6,9 @@ export const APP_BRAND = 'by APEX AFRICA'
 export const APP_SIGNATURE = 'APEX AFRICA — African Premium Experience · Abidjan, Côte d’Ivoire'
 export const APP_CONTACT = 'contact@apxafrica.com · www.apxafrica.com'
 
+/** Adresse publique de l'application — celle que l'on partage. */
+export const APP_URL = 'https://budgetsmart.apxafrica.com'
+
 export const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 export const MOIS_COURT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
