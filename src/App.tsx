@@ -13,6 +13,7 @@ import Estimation from './pages/Estimation'
 import Journal from './pages/Journal'
 import ModulePage from './pages/Module'
 import Parametres from './pages/Parametres'
+import Guide from './pages/Guide'
 import Nouveautes from './pages/Nouveautes'
 import Plus from './pages/Plus'
 import TableauBord from './pages/TableauBord'
@@ -99,6 +100,7 @@ export default function App() {
           <Route path="/module/:id" element={<ModulePage />} />
           <Route path="/plus" element={<Plus />} />
           <Route path="/nouveautes" element={<Nouveautes />} />
+          <Route path="/guide" element={<Guide />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

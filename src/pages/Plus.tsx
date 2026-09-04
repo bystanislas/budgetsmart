@@ -1,9 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
-  AlertTriangle, ArrowLeftRight, Bell, ChevronRight, Download, FileSpreadsheet,
-  FileText, Pencil,
-  Plus as PlusIcon, Repeat2, RotateCcw, Target, Trash2, TrendingDown, Upload,
-  UserCog, Zap,
+  AlertTriangle, ArrowLeftRight, Bell, BookOpen, ChevronRight, Download,
+  FileSpreadsheet, FileText, Pencil, Plus as PlusIcon, Repeat2, RotateCcw,
+  Target, Trash2, TrendingDown, Upload, UserCog, Zap,
 } from 'lucide-react'
 import { VERSION_ACTUELLE, useNouveautes } from '../lib/nouveautes'
 import { useRef, useState } from 'react'
@@ -169,6 +168,18 @@ export default function Plus() {
           {message}
         </Card>
       )}
+
+      <Card onClick={() => nav('/guide')} className="flex items-center gap-3 p-3">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl
+                        bg-apex-gold text-white">
+          <BookOpen size={20} strokeWidth={2.2} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-apex-navy">{t('guide.titre')}</p>
+          <p className="truncate text-2xs text-surface-500">{t('guide.sousTitre')}</p>
+        </div>
+        <ChevronRight size={18} className="shrink-0 text-surface-400" />
+      </Card>
 
       <CompteCloud annonce={annonce} />
 

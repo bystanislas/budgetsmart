@@ -1,5 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowRight, Building2, Heart, Briefcase, ClipboardList, NotebookPen, UserCog } from 'lucide-react'
+import {
+  ArrowRight, BookOpen, Building2, Heart, Briefcase, ClipboardList,
+  NotebookPen, UserCog,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Kpi, Section } from '../components/kit'
 import { APP_SIGNATURE, APP_CONTACT } from '../data/refs'
@@ -63,6 +66,21 @@ export default function Accueil() {
         </div>
         <div className="h-1 bg-apex-gold" />
       </Card>
+
+      {/* Tant que rien n'a été saisi, l'entrée la plus utile est le mode d'emploi. */}
+      {!faits.infos && !faits.journal && (
+        <Card onClick={() => nav('/guide')} className="flex items-center gap-3 p-3">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl
+                          bg-apex-gold text-white">
+            <BookOpen size={22} strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-apex-navy">{t('guide.nouveau')}</p>
+            <p className="text-xs leading-snug text-surface-500">{t('guide.nouveauSous')}</p>
+          </div>
+          <ArrowRight size={18} className="shrink-0 text-surface-400" />
+        </Card>
+      )}
 
       <Section title={t('accueil.parcours')}>
         <div className="space-y-2.5">

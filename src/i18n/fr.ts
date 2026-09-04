@@ -481,6 +481,17 @@ export const fr = {
     t4: 'T4 — octobre à décembre',
   },
 
+  guide: {
+    titre: 'Mode d’emploi',
+    sousTitre: 'Tout ce qu’il faut savoir pour bien démarrer, en dix minutes.',
+    etape: 'Étape {n} sur {total}',
+    pret: 'Vous savez l’essentiel. Le mieux, maintenant, est de renseigner vos informations et de saisir votre première dépense.',
+    commencer: 'Commencer maintenant',
+    ouvrir: 'Lire le mode d’emploi',
+    nouveau: 'Première fois ici ?',
+    nouveauSous: 'Le mode d’emploi vous montre comment démarrer, pas à pas.',
+  },
+
   nouveautes: {
     titre: 'Nouveautés',
     sousTitre: 'Ce qui a changé dans l’application, et qui est déjà actif chez vous.',

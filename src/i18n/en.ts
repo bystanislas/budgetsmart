@@ -478,6 +478,17 @@ export const en: Dictionnaire = {
     t4: 'Q4 — October to December',
   },
 
+  guide: {
+    titre: 'User guide',
+    sousTitre: 'Everything you need to get started properly, in ten minutes.',
+    etape: 'Step {n} of {total}',
+    pret: 'You know the essentials. The best move now is to fill in your details and record your first expense.',
+    commencer: 'Start now',
+    ouvrir: 'Read the user guide',
+    nouveau: 'First time here?',
+    nouveauSous: 'The user guide walks you through getting started, step by step.',
+  },
+
   nouveautes: {
     titre: 'What’s new',
     sousTitre: 'What changed in the app, and is already live for you.',

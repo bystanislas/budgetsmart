@@ -23,6 +23,17 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.4.0',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'nouveau',
+        fr: 'Un mode d’emploi complet pour bien démarrer : à quoi sert chaque écran, comment choisir le bon type d’opération, et les questions que tout le monde se pose au début. Dans Plus → Mode d’emploi.',
+        en: 'A complete user guide to get started: what each screen is for, how to pick the right entry type, and the questions everyone asks at the start. Under More → User guide.',
+      },
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-09-04',
     changements: [
