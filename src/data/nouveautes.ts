@@ -23,6 +23,17 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '1.9.4',
+    date: '2026-09-04',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Sur la fiche d’un crédit, « Mensualité », « Remboursé » et « Reste dû » restaient en français même en mode anglais.',
+        en: 'On a credit card, “Monthly payment”, “Repaid” and “Still owed” stayed in French even in English mode.',
+      },
+    ],
+  },
+  {
     version: '1.9.3',
     date: '2026-09-04',
     changements: [

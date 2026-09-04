@@ -321,9 +321,10 @@ export default function Plus() {
                   </div>
                   <div className="mt-2.5 grid grid-cols-3 gap-2 text-center">
                     {[
-                      ['Mensualité', fmt(p, Math.round(mensualite(d.capital, d.tauxAnnuel, d.dureeMois)))],
-                      ['Remboursé', fmt(p, paye)],
-                      ['Reste dû', fmt(p, Math.round(reste))],
+                      [t('plus.mensualite'),
+                        fmt(p, Math.round(mensualite(d.capital, d.tauxAnnuel, d.dureeMois)))],
+                      [t('plus.rembourse'), fmt(p, paye)],
+                      [t('plus.resteDu'), fmt(p, Math.round(reste))],
                     ].map(([label, valeur]) => (
                       <div key={label} className="rounded-lg bg-surface-50 py-1.5">
                         <p className="text-2xs text-surface-500">{label}</p>
