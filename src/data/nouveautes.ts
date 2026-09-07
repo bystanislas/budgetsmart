@@ -23,6 +23,17 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '2.1.1',
+    date: '2026-09-07',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Un appareil qui ne contient encore aucune saisie ne peut plus rien envoyer dans votre espace en ligne : il ne fait que recevoir. Se connecter depuis un ordinateur vierge ne risque donc plus d’y imposer son vide.',
+        en: 'A device that holds no entries yet can no longer send anything to your online space: it only receives. Signing in from a blank computer can no longer impose its emptiness on it.',
+      },
+    ],
+  },
+  {
     version: '2.1.0',
     date: '2026-09-07',
     changements: [

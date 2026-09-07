@@ -111,8 +111,16 @@ async function ecrireParLots(
   }
 }
 
-/** Envoie l'intégralité des données locales vers le dossier cloud de l'utilisateur. */
+/**
+ * Envoie l'intégralité des données locales vers le dossier cloud.
+ *
+ * Un appareil qui ne contient aucune écriture n'a rien à apporter et tout à
+ * faire perdre : ses paramètres tout juste créés sont plus récents que ceux
+ * du dossier et les écraseraient. On lui laisse donc le droit de recevoir,
+ * jamais celui d'imposer, tant qu'il est vide.
+ */
 export async function pousserTout(uid: string) {
+  if ((await db.ecritures.count()) === 0 && (await db.plan.count()) === 0) return
   for (const nom of TABLES) {
     const lignes = await tableSync(nom).toArray()
     await ecrireParLots((l) => doc(firestore, 'users', uid, nom, l.id), lignes)
