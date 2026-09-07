@@ -33,6 +33,59 @@ const tableSync = (nom: (typeof TABLES)[number]) =>
 let uidActif: string | null = null
 let minuteur: ReturnType<typeof setTimeout> | undefined
 
+/* ------------------------------------------------------- état visible */
+
+export type CauseSync = 'droits' | 'reseau' | 'session' | 'base' | 'autre'
+
+export interface EtatSync {
+  etat: 'inactif' | 'encours' | 'ok' | 'echec'
+  /** Horodatage de la dernière synchronisation réussie. */
+  reussieLe?: string
+  cause?: CauseSync
+}
+
+/**
+ * Traduit l'échec de Firestore en cause exploitable. « droits » désigne le cas
+ * de loin le plus fréquent : les règles de sécurité du projet n'autorisent pas
+ * l'utilisateur à écrire dans son propre dossier. Sans ce diagnostic, une
+ * synchronisation qui échoue à chaque tentative reste parfaitement invisible.
+ */
+export function causeSync(erreur: unknown): CauseSync {
+  const code = (erreur as { code?: string })?.code ?? ''
+  if (code.includes('permission-denied')) return 'droits'
+  if (code.includes('unauthenticated')) return 'session'
+  if (code.includes('unavailable') || code.includes('deadline-exceeded')) return 'reseau'
+  if (code.includes('failed-precondition') || code.includes('not-found')) return 'base'
+  return 'autre'
+}
+
+let etatCourant: EtatSync = { etat: 'inactif' }
+const observateurs = new Set<(e: EtatSync) => void>()
+
+const publier = (e: EtatSync) => {
+  etatCourant = e
+  observateurs.forEach((f) => f(e))
+}
+
+export const etatSync = () => etatCourant
+export function observerSync(f: (e: EtatSync) => void) {
+  observateurs.add(f)
+  return () => { observateurs.delete(f) }
+}
+
+/** Exécute une synchronisation en tenant l'état à jour, sans jamais échouer en silence. */
+export async function synchroniser(uid: string, sens: 'envoi' | 'complet' = 'complet') {
+  publier({ ...etatCourant, etat: 'encours' })
+  try {
+    if (sens === 'complet') await tirerTout(uid)
+    await pousserTout(uid)
+    publier({ etat: 'ok', reussieLe: new Date().toISOString() })
+  } catch (erreur) {
+    publier({ ...etatCourant, etat: 'echec', cause: causeSync(erreur) })
+    throw erreur
+  }
+}
+
 export const definirUtilisateurSync = (uid: string | null) => { uidActif = uid }
 export const syncActive = () => uidActif !== null
 
@@ -41,7 +94,9 @@ export function programmerEnvoi() {
   if (!uidActif) return
   clearTimeout(minuteur)
   const uid = uidActif
-  minuteur = setTimeout(() => { void pousserTout(uid) }, 1500)
+  // L'envoi automatique passe par `synchroniser` pour que son échec soit
+  // enregistré et affiché, au lieu de disparaître dans une promesse ignorée.
+  minuteur = setTimeout(() => { void synchroniser(uid, 'envoi').catch(() => {}) }, 1500)
 }
 
 async function ecrireParLots(

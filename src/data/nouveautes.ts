@@ -23,6 +23,17 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '2.1.0',
+    date: '2026-09-07',
+    changements: [
+      {
+        genre: 'correction',
+        fr: 'Une synchronisation qui échoue le dit enfin. Jusqu’ici, un refus du serveur disparaissait sans laisser de trace : l’application affichait « Sauvegarde en ligne active » alors que rien ne partait ni ne revenait. Le motif exact est désormais affiché, et la date de la dernière synchronisation réussie avec lui.',
+        en: 'A failing sync now says so. Until now a server refusal vanished without a trace: the app showed “Online backup active” while nothing was being sent or received. The exact reason is now displayed, along with the date of the last successful sync.',
+      },
+    ],
+  },
+  {
     version: '2.0.0',
     date: '2026-09-04',
     changements: [

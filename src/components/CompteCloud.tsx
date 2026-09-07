@@ -7,7 +7,7 @@ import {
   envoyerLienConnexion, estAppInstallee, googleIndisponible, lienDeConnexionRecu,
   saisieEstUnLien, seDeconnecter, terminerConnexionParEmail, useUtilisateur,
 } from '../lib/auth'
-import { pousserTout, tirerTout } from '../lib/sync'
+import { causeSync, etatSync, observerSync, synchroniser, type EtatSync } from '../lib/sync'
 import { useT } from '../i18n'
 
 const CONTENEUR_RECAPTCHA = 'recaptcha-conteneur'
@@ -29,6 +29,8 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
   const [code, setCode] = useState('')
   const [lienColle, setLienColle] = useState('')
   const [occupe, setOccupe] = useState(false)
+  const [sync, setSync] = useState<EtatSync>(etatSync)
+  useEffect(() => observerSync(setSync), [])
 
   // Depuis l'écran d'accueil, le lien reçu par email s'ouvre dans le
   // navigateur et non dans l'application : on propose d'emblée de le coller.
@@ -95,6 +97,20 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
     }
   }
 
+  /**
+   * Une synchronisation qui échoue doit se voir. La cause la plus fréquente
+   * n'est pas le réseau mais les droits : tant que les règles de sécurité du
+   * projet n'autorisent pas l'utilisateur à écrire son propre dossier, rien
+   * ne part et rien ne revient, sans le moindre signe.
+   */
+  const MESSAGE_SYNC = {
+    droits: 'compte.syncDroits',
+    reseau: 'compte.syncReseau',
+    session: 'compte.syncSession',
+    base: 'compte.syncBase',
+    autre: 'compte.syncImpossible',
+  } as const
+
   /* ------------------------------------------------------- déjà connecté */
   if (utilisateur) {
     const identifiant = utilisateur.email ?? utilisateur.phoneNumber ?? 'compte'
@@ -113,6 +129,18 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
             </div>
           </div>
 
+          {sync.etat === 'echec' && sync.cause && (
+            <p className="rounded-xl bg-apex-blush p-2.5 text-2xs font-semibold
+                          leading-relaxed text-apex-red">
+              {t(MESSAGE_SYNC[sync.cause])}
+            </p>
+          )}
+          {sync.etat === 'ok' && sync.reussieLe && (
+            <p className="text-2xs font-semibold text-apex-green">
+              {t('compte.syncLe', { quand: new Date(sync.reussieLe).toLocaleString() })}
+            </p>
+          )}
+
           <p className="text-2xs leading-relaxed text-surface-500">
             {t('compte.connecteAide')}
           </p>
@@ -121,11 +149,13 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
             <Btn
               variant="ghost"
               disabled={occupe}
-              onClick={() => void proteger(async () => {
-                await pousserTout(utilisateur.uid)
-                await tirerTout(utilisateur.uid)
-                annonce(t('compte.syncTerminee'))
-              }, t('compte.syncImpossible'))}
+              onClick={() => {
+                setOccupe(true)
+                void synchroniser(utilisateur.uid)
+                  .then(() => annonce(t('compte.syncTerminee')))
+                  .catch((e) => annonce(t(MESSAGE_SYNC[causeSync(e)])))
+                  .finally(() => setOccupe(false))
+              }}
             >
               <RefreshCw size={16} /> {t('compte.synchroniser')}
             </Btn>

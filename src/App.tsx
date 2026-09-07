@@ -5,7 +5,7 @@ import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { finaliserRedirection, lienDeConnexionRecu, useUtilisateur } from './lib/auth'
 import { useT } from './i18n'
 import { useNouveautes } from './lib/nouveautes'
-import { definirUtilisateurSync, pousserTout, tirerTout } from './lib/sync'
+import { definirUtilisateurSync, synchroniser } from './lib/sync'
 import { getParametres } from './db'
 import { APP_BRAND, APP_NAME } from './data/refs'
 import Accueil from './pages/Accueil'
@@ -51,10 +51,10 @@ export default function App() {
     definirUtilisateurSync(utilisateur?.uid ?? null)
     if (!utilisateur) return
     const { uid } = utilisateur
-    void (async () => {
-      await tirerTout(uid)
-      await pousserTout(uid)
-    })()
+    void synchroniser(uid).catch(() => {
+      // L'échec est déjà enregistré dans l'état de synchronisation, que la
+      // page « Plus » affiche : rien à faire ici, mais surtout rien à taire.
+    })
   }, [utilisateur?.uid])
 
   return (
