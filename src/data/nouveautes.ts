@@ -23,6 +23,17 @@ export interface Version {
 
 export const JOURNAL: Version[] = [
   {
+    version: '2.1.2',
+    date: '2026-09-07',
+    changements: [
+      {
+        genre: 'amelioration',
+        fr: 'Quand la synchronisation échoue, l’application précise désormais à quelle étape — lire votre dossier ou l’écrire — et affiche le code exact renvoyé par le serveur. Un refus à l’écriture seule désigne une règle de sécurité incomplète, et non un problème de réseau.',
+        en: 'When syncing fails, the app now says at which step — reading your folder or writing it — and shows the exact code returned by the server. A refusal on writing alone points to an incomplete security rule, not a network problem.',
+      },
+    ],
+  },
+  {
     version: '2.1.1',
     date: '2026-09-07',
     changements: [

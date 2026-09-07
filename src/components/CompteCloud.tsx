@@ -130,10 +130,17 @@ export default function CompteCloud({ annonce }: { annonce: (texte: string) => v
           </div>
 
           {sync.etat === 'echec' && sync.cause && (
-            <p className="rounded-xl bg-apex-blush p-2.5 text-2xs font-semibold
-                          leading-relaxed text-apex-red">
-              {t(MESSAGE_SYNC[sync.cause])}
-            </p>
+            <div className="rounded-xl bg-apex-blush p-2.5">
+              <p className="text-2xs font-semibold leading-relaxed text-apex-red">
+                {t(MESSAGE_SYNC[sync.cause])}
+              </p>
+              {/* Le détail technique n'est pas pour l'utilisateur courant, mais
+                  il tranche en un coup d'œil quelle règle est en cause. */}
+              <p className="mt-1 font-mono text-[10px] text-apex-red/70">
+                {sync.etape === 'lecture' ? t('compte.etapeLecture') : t('compte.etapeEcriture')}
+                {' · '}{sync.code}
+              </p>
+            </div>
           )}
           {sync.etat === 'ok' && sync.reussieLe && (
             <p className="text-2xs font-semibold text-apex-green">

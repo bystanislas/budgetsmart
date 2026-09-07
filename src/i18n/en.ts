@@ -467,6 +467,8 @@ export const en: Dictionnaire = {
     syncSession: 'Session expired. Sign out and sign in again.',
     syncBase: 'The online database is unavailable for this project.',
     syncLe: 'Last sync: {quand}',
+    etapeLecture: 'reading the folder',
+    etapeEcriture: 'writing the folder',
     deconnecte: 'Signed out. Your data stays on this device.',
     deconnexionImpossible: 'Could not sign out.',
   },

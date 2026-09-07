@@ -42,6 +42,10 @@ export interface EtatSync {
   /** Horodatage de la dernière synchronisation réussie. */
   reussieLe?: string
   cause?: CauseSync
+  /** Étape où l'échec s'est produit : lire le dossier, ou l'écrire. */
+  etape?: 'lecture' | 'ecriture'
+  /** Code technique renvoyé par le serveur, pour lever toute ambiguïté. */
+  code?: string
 }
 
 /**
@@ -76,12 +80,22 @@ export function observerSync(f: (e: EtatSync) => void) {
 /** Exécute une synchronisation en tenant l'état à jour, sans jamais échouer en silence. */
 export async function synchroniser(uid: string, sens: 'envoi' | 'complet' = 'complet') {
   publier({ ...etatCourant, etat: 'encours' })
+  // On retient l'étape en cours : lire le dossier et l'écrire ne demandent pas
+  // les mêmes droits, et savoir laquelle a échoué désigne la règle en cause.
+  let etape: 'lecture' | 'ecriture' = sens === 'complet' ? 'lecture' : 'ecriture'
   try {
     if (sens === 'complet') await tirerTout(uid)
+    etape = 'ecriture'
     await pousserTout(uid)
     publier({ etat: 'ok', reussieLe: new Date().toISOString() })
   } catch (erreur) {
-    publier({ ...etatCourant, etat: 'echec', cause: causeSync(erreur) })
+    publier({
+      ...etatCourant,
+      etat: 'echec',
+      cause: causeSync(erreur),
+      etape,
+      code: (erreur as { code?: string })?.code ?? 'inconnu',
+    })
     throw erreur
   }
 }

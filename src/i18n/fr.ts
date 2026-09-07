@@ -470,6 +470,8 @@ export const fr = {
     syncSession: 'Session expirée. Déconnectez-vous puis reconnectez-vous.',
     syncBase: 'Base de données en ligne indisponible pour ce projet.',
     syncLe: 'Dernière synchronisation : {quand}',
+    etapeLecture: 'lecture du dossier',
+    etapeEcriture: 'écriture du dossier',
     deconnecte: 'Déconnecté. Vos données restent sur cet appareil.',
     deconnexionImpossible: 'Déconnexion impossible.',
   },
